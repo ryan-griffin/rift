@@ -1,18 +1,19 @@
 {
   "version": "4",
   "specifiers": {
-    "npm:@solidjs/start@^1.1.3": "1.1.3_vinxi@0.5.6__@babel+core@7.27.1_seroval@1.3.1_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2",
+    "npm:@solidjs/start@^1.1.3": "1.1.3_vinxi@0.5.6__@babel+core@7.27.1_seroval@1.3.1_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@types+node@22.12.0",
     "npm:@tauri-apps/api@^2.5.0": "2.5.0",
     "npm:@tauri-apps/cli@2.5.0": "2.5.0",
     "npm:@tauri-apps/cli@^2.5.0": "2.5.0",
     "npm:@tauri-apps/plugin-opener@^2.2.6": "2.2.6",
+    "npm:@types/node@*": "22.12.0",
     "npm:create-tauri-app@*": "4.5.9",
     "npm:solid-js@^1.9.6": "1.9.6_seroval@1.3.1",
-    "npm:vinxi@0.5.6": "0.5.6_@babel+core@7.27.1",
-    "npm:vinxi@~0.5.6": "0.5.6_@babel+core@7.27.1",
-    "npm:vite-plugin-solid@^2.11.6": "2.11.6_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@babel+core@7.27.1",
-    "npm:vite@6.3.5": "6.3.5_picomatch@4.0.2",
-    "npm:vite@^6.3.5": "6.3.5_picomatch@4.0.2"
+    "npm:vinxi@0.5.6": "0.5.6_@babel+core@7.27.1_@types+node@22.12.0",
+    "npm:vinxi@~0.5.6": "0.5.6_@babel+core@7.27.1_@types+node@22.12.0",
+    "npm:vite-plugin-solid@^2.11.6": "2.11.6_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@babel+core@7.27.1_@types+node@22.12.0",
+    "npm:vite@6.3.5": "6.3.5_picomatch@4.0.2_@types+node@22.12.0",
+    "npm:vite@^6.3.5": "6.3.5_picomatch@4.0.2_@types+node@22.12.0"
   },
   "npm": {
     "@ampproject/remapping@2.3.0": {
@@ -362,12 +363,12 @@
     "@isaacs/cliui@8.0.2": {
       "integrity": "sha512-O8jcjabXaleOG9DQ0+ARXWZBTfnP4WNAqzuiJK7ll44AmxGKv/J2M4TPjxjY3znBCfvBXFzucm1twdyFybFqEA==",
       "dependencies": [
-        "string-width@5.1.2",
         "string-width-cjs@npm:string-width@4.2.3",
-        "strip-ansi@7.1.0",
+        "string-width@5.1.2",
         "strip-ansi-cjs@npm:strip-ansi@6.0.1",
-        "wrap-ansi@8.1.0",
-        "wrap-ansi-cjs@npm:wrap-ansi@7.0.0"
+        "strip-ansi@7.1.0",
+        "wrap-ansi-cjs@npm:wrap-ansi@7.0.0",
+        "wrap-ansi@8.1.0"
       ]
     },
     "@isaacs/fs-minipass@4.0.1": {
@@ -827,9 +828,9 @@
     "@solidjs/start@1.1.3_vinxi@0.5.6__@babel+core@7.27.1_seroval@1.3.1_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2": {
       "integrity": "sha512-JjBQDk+5xIRVgAdh3A5/caWq1g2LaVh41mQTcl7ACKfmnYRkHkvGezV4XnckTBxXkmFYkXKxwCWavguPA0JE5g==",
       "dependencies": [
-        "@tanstack/server-functions-plugin",
-        "@vinxi/plugin-directives",
-        "@vinxi/server-components",
+        "@tanstack/server-functions-plugin@1.119.2_@babel+core@7.27.1",
+        "@vinxi/plugin-directives@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1",
+        "@vinxi/server-components@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1",
         "defu",
         "error-stack-parser",
         "html-to-image",
@@ -840,8 +841,28 @@
         "source-map-js",
         "terracotta",
         "tinyglobby",
-        "vinxi",
-        "vite-plugin-solid"
+        "vinxi@0.5.6_@babel+core@7.27.1",
+        "vite-plugin-solid@2.11.6_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@babel+core@7.27.1"
+      ]
+    },
+    "@solidjs/start@1.1.3_vinxi@0.5.6__@babel+core@7.27.1_seroval@1.3.1_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@types+node@22.12.0": {
+      "integrity": "sha512-JjBQDk+5xIRVgAdh3A5/caWq1g2LaVh41mQTcl7ACKfmnYRkHkvGezV4XnckTBxXkmFYkXKxwCWavguPA0JE5g==",
+      "dependencies": [
+        "@tanstack/server-functions-plugin@1.119.2_@babel+core@7.27.1_@types+node@22.12.0",
+        "@vinxi/plugin-directives@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1_@types+node@22.12.0",
+        "@vinxi/server-components@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1_@types+node@22.12.0",
+        "defu",
+        "error-stack-parser",
+        "html-to-image",
+        "radix3",
+        "seroval",
+        "seroval-plugins",
+        "shiki",
+        "source-map-js",
+        "terracotta",
+        "tinyglobby",
+        "vinxi@0.5.6_@babel+core@7.27.1_@types+node@22.12.0",
+        "vite-plugin-solid@2.11.6_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@babel+core@7.27.1_@types+node@22.12.0"
       ]
     },
     "@speed-highlight/core@1.2.7": {
@@ -864,6 +885,23 @@
         "vite@6.1.4"
       ]
     },
+    "@tanstack/directive-functions-plugin@1.119.2_@babel+core@7.27.1_@types+node@22.12.0": {
+      "integrity": "sha512-FsBBDrOQHUA9xCsSgmxJud1NY3PFz8P3LFrz2h+LdyRt/t5jeTvgLRjNZWKMk4izBqyyTYC9X+WF10ZyS9nPMw==",
+      "dependencies": [
+        "@babel/code-frame@7.26.2",
+        "@babel/core",
+        "@babel/plugin-syntax-jsx",
+        "@babel/plugin-syntax-typescript",
+        "@babel/template",
+        "@babel/traverse",
+        "@babel/types",
+        "@tanstack/router-utils",
+        "babel-dead-code-elimination",
+        "dedent",
+        "tiny-invariant",
+        "vite@6.1.4_@types+node@22.12.0"
+      ]
+    },
     "@tanstack/router-utils@1.115.0": {
       "integrity": "sha512-Dng4y+uLR9b5zPGg7dHReHOTHQa6x+G6nCoZshsDtWrYsrdCcJEtLyhwZ5wG8OyYS6dVr/Cn+E5Bd2b6BhJ89w==",
       "dependencies": [
@@ -883,7 +921,23 @@
         "@babel/template",
         "@babel/traverse",
         "@babel/types",
-        "@tanstack/directive-functions-plugin",
+        "@tanstack/directive-functions-plugin@1.119.2_@babel+core@7.27.1",
+        "babel-dead-code-elimination",
+        "dedent",
+        "tiny-invariant"
+      ]
+    },
+    "@tanstack/server-functions-plugin@1.119.2_@babel+core@7.27.1_@types+node@22.12.0": {
+      "integrity": "sha512-ramMedB4yt+fhFHio3GqRLUQVwKBEBREnHEVetHEYHLe6h+qYEwaVxQrQ75J+dTTWXa14DLadtgR3ygEydtfqA==",
+      "dependencies": [
+        "@babel/code-frame@7.26.2",
+        "@babel/core",
+        "@babel/plugin-syntax-jsx",
+        "@babel/plugin-syntax-typescript",
+        "@babel/template",
+        "@babel/traverse",
+        "@babel/types",
+        "@tanstack/directive-functions-plugin@1.119.2_@babel+core@7.27.1_@types+node@22.12.0",
         "babel-dead-code-elimination",
         "dedent",
         "tiny-invariant"
@@ -1117,20 +1171,48 @@
         "magicast@0.2.11",
         "recast",
         "tslib@2.8.1",
-        "vinxi"
+        "vinxi@0.5.6_@babel+core@7.27.1"
+      ]
+    },
+    "@vinxi/plugin-directives@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1_@types+node@22.12.0": {
+      "integrity": "sha512-pH/KIVBvBt7z7cXrUH/9uaqcdxjegFC7+zvkZkdOyWzs+kQD5KPf3cl8kC+5ayzXHT+OMlhGhyitytqN3cGmHg==",
+      "dependencies": [
+        "@babel/parser",
+        "acorn",
+        "acorn-jsx",
+        "acorn-loose",
+        "acorn-typescript",
+        "astring",
+        "magicast@0.2.11",
+        "recast",
+        "tslib@2.8.1",
+        "vinxi@0.5.6_@babel+core@7.27.1_@types+node@22.12.0"
       ]
     },
     "@vinxi/server-components@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1": {
       "integrity": "sha512-0BsG95qac3dkhfdRZxqzqYWJE4NvPL7ILlV43B6K6ho1etXWB2e5b0IxsUAUbyqpqiXM7mSRivojuXjb2G4OsQ==",
       "dependencies": [
-        "@vinxi/plugin-directives",
+        "@vinxi/plugin-directives@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1",
         "acorn",
         "acorn-loose",
         "acorn-typescript",
         "astring",
         "magicast@0.2.11",
         "recast",
-        "vinxi"
+        "vinxi@0.5.6_@babel+core@7.27.1"
+      ]
+    },
+    "@vinxi/server-components@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1_@types+node@22.12.0": {
+      "integrity": "sha512-0BsG95qac3dkhfdRZxqzqYWJE4NvPL7ILlV43B6K6ho1etXWB2e5b0IxsUAUbyqpqiXM7mSRivojuXjb2G4OsQ==",
+      "dependencies": [
+        "@vinxi/plugin-directives@0.5.1_vinxi@0.5.6__@babel+core@7.27.1_acorn@8.14.1_@types+node@22.12.0",
+        "acorn",
+        "acorn-loose",
+        "acorn-typescript",
+        "astring",
+        "magicast@0.2.11",
+        "recast",
+        "vinxi@0.5.6_@babel+core@7.27.1_@types+node@22.12.0"
       ]
     },
     "@whatwg-node/disposablestack@0.0.6": {
@@ -1998,15 +2080,15 @@
       "integrity": "sha512-+9egpBW8I3CD5XPe0n6BfT5fxLzxrlDzqydF3aviG+9ni1lDC/OvMHcxqEFV0+LANZG5R1bFMWfUrjVsdwxJvA==",
       "dependencies": [
         "@esbuild/aix-ppc64@0.24.2",
-        "@esbuild/android-arm@0.24.2",
         "@esbuild/android-arm64@0.24.2",
+        "@esbuild/android-arm@0.24.2",
         "@esbuild/android-x64@0.24.2",
         "@esbuild/darwin-arm64@0.24.2",
         "@esbuild/darwin-x64@0.24.2",
         "@esbuild/freebsd-arm64@0.24.2",
         "@esbuild/freebsd-x64@0.24.2",
-        "@esbuild/linux-arm@0.24.2",
         "@esbuild/linux-arm64@0.24.2",
+        "@esbuild/linux-arm@0.24.2",
         "@esbuild/linux-ia32@0.24.2",
         "@esbuild/linux-loong64@0.24.2",
         "@esbuild/linux-mips64el@0.24.2",
@@ -2028,15 +2110,15 @@
       "integrity": "sha512-8pgjLUcUjcgDg+2Q4NYXnPbo/vncAY4UmyaCm0jZevERqCHZIaWwdJHkf8XQtu4AxSKCdvrUbT0XUr1IdZzI8Q==",
       "dependencies": [
         "@esbuild/aix-ppc64@0.25.4",
-        "@esbuild/android-arm@0.25.4",
         "@esbuild/android-arm64@0.25.4",
+        "@esbuild/android-arm@0.25.4",
         "@esbuild/android-x64@0.25.4",
         "@esbuild/darwin-arm64@0.25.4",
         "@esbuild/darwin-x64@0.25.4",
         "@esbuild/freebsd-arm64@0.25.4",
         "@esbuild/freebsd-x64@0.25.4",
-        "@esbuild/linux-arm@0.25.4",
         "@esbuild/linux-arm64@0.25.4",
+        "@esbuild/linux-arm@0.25.4",
         "@esbuild/linux-ia32@0.25.4",
         "@esbuild/linux-loong64@0.25.4",
         "@esbuild/linux-mips64el@0.25.4",
@@ -4182,8 +4264,8 @@
         "scule",
         "strip-literal",
         "tinyglobby",
-        "unplugin@2.3.2",
-        "unplugin-utils"
+        "unplugin-utils",
+        "unplugin@2.3.2"
       ]
     },
     "unist-util-is@6.0.0": {
@@ -4377,6 +4459,45 @@
         "zod"
       ]
     },
+    "vinxi@0.5.6_@babel+core@7.27.1_@types+node@22.12.0": {
+      "integrity": "sha512-K9zaoHEdLXSVw3akoKcpRaRaGNZcXAnB0XBcke74y0FbXqcR3+rlFxOH/Pi3Maq3K7wAPBGyE91HW0lATfv5Kg==",
+      "dependencies": [
+        "@babel/core",
+        "@babel/plugin-syntax-jsx",
+        "@babel/plugin-syntax-typescript",
+        "@types/micromatch",
+        "@vinxi/listhen",
+        "boxen",
+        "chokidar",
+        "citty",
+        "consola",
+        "crossws",
+        "dax-sh",
+        "defu",
+        "es-module-lexer",
+        "esbuild@0.25.4",
+        "fast-glob",
+        "get-port-please",
+        "h3@1.15.2",
+        "hookable",
+        "http-proxy",
+        "micromatch",
+        "nitropack",
+        "node-fetch-native",
+        "path-to-regexp",
+        "pathe@1.1.2",
+        "radix3",
+        "resolve@1.22.10",
+        "serve-placeholder",
+        "serve-static@1.16.2",
+        "ufo",
+        "unctx",
+        "unenv@1.10.0",
+        "unstorage",
+        "vite@6.3.5_picomatch@4.0.2_@types+node@22.12.0",
+        "zod"
+      ]
+    },
     "vite-plugin-solid@2.11.6_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@babel+core@7.27.1": {
       "integrity": "sha512-Sl5CTqJTGyEeOsmdH6BOgalIZlwH3t4/y0RQuFLMGnvWMBvxb4+lq7x3BSiAw6etf0QexfNJW7HSOO/Qf7pigg==",
       "dependencies": [
@@ -4387,12 +4508,35 @@
         "solid-js",
         "solid-refresh",
         "vite@6.3.5_picomatch@4.0.2",
-        "vitefu"
+        "vitefu@1.0.6_vite@6.3.5__picomatch@4.0.2"
+      ]
+    },
+    "vite-plugin-solid@2.11.6_solid-js@1.9.6__seroval@1.3.1_vite@6.3.5__picomatch@4.0.2_@babel+core@7.27.1_@types+node@22.12.0": {
+      "integrity": "sha512-Sl5CTqJTGyEeOsmdH6BOgalIZlwH3t4/y0RQuFLMGnvWMBvxb4+lq7x3BSiAw6etf0QexfNJW7HSOO/Qf7pigg==",
+      "dependencies": [
+        "@babel/core",
+        "@types/babel__core",
+        "babel-preset-solid",
+        "merge-anything",
+        "solid-js",
+        "solid-refresh",
+        "vite@6.3.5_picomatch@4.0.2_@types+node@22.12.0",
+        "vitefu@1.0.6_vite@6.3.5__picomatch@4.0.2_@types+node@22.12.0"
       ]
     },
     "vite@6.1.4": {
       "integrity": "sha512-VzONrF/qqEg/JBwHXBJdVSmBZBhwiPGinyUb0SQLByqQwi6o8UvX5TWLkpvkq3tvN8Cr273ieZDt36CGwWRMvA==",
       "dependencies": [
+        "esbuild@0.24.2",
+        "fsevents",
+        "postcss",
+        "rollup"
+      ]
+    },
+    "vite@6.1.4_@types+node@22.12.0": {
+      "integrity": "sha512-VzONrF/qqEg/JBwHXBJdVSmBZBhwiPGinyUb0SQLByqQwi6o8UvX5TWLkpvkq3tvN8Cr273ieZDt36CGwWRMvA==",
+      "dependencies": [
+        "@types/node",
         "esbuild@0.24.2",
         "fsevents",
         "postcss",
@@ -4411,10 +4555,29 @@
         "tinyglobby"
       ]
     },
+    "vite@6.3.5_picomatch@4.0.2_@types+node@22.12.0": {
+      "integrity": "sha512-cZn6NDFE7wdTpINgs++ZJ4N49W2vRp8LCKrn3Ob1kYNtOo21vfDoaV5GzBfLU4MovSAB8uNRm4jgzVQZ+mBzPQ==",
+      "dependencies": [
+        "@types/node",
+        "esbuild@0.25.4",
+        "fdir",
+        "fsevents",
+        "picomatch@4.0.2",
+        "postcss",
+        "rollup",
+        "tinyglobby"
+      ]
+    },
     "vitefu@1.0.6_vite@6.3.5__picomatch@4.0.2": {
       "integrity": "sha512-+Rex1GlappUyNN6UfwbVZne/9cYC4+R2XDk9xkNXBKMw6HQagdX9PgZ8V2v1WUSK1wfBLp7qbI1+XSNIlB1xmA==",
       "dependencies": [
         "vite@6.3.5_picomatch@4.0.2"
+      ]
+    },
+    "vitefu@1.0.6_vite@6.3.5__picomatch@4.0.2_@types+node@22.12.0": {
+      "integrity": "sha512-+Rex1GlappUyNN6UfwbVZne/9cYC4+R2XDk9xkNXBKMw6HQagdX9PgZ8V2v1WUSK1wfBLp7qbI1+XSNIlB1xmA==",
+      "dependencies": [
+        "vite@6.3.5_picomatch@4.0.2_@types+node@22.12.0"
       ]
     },
     "web-streams-polyfill@3.3.3": {

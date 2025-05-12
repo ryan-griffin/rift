@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
+import { Button } from "@ui";
 
 function App() {
 	const [greetMsg, setGreetMsg] = createSignal("");
@@ -28,6 +29,7 @@ function App() {
 				<button type="submit">Greet</button>
 			</form>
 			<p>{greetMsg()}</p>
+			<Button />
 		</main>
 	);
 }

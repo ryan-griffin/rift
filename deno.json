@@ -7,7 +7,8 @@
 		"desktop:dev": "deno task api:dev & deno task --cwd=apps/desktop tauri dev"
 	},
 	"imports": {
-		"solid-js": "npm:solid-js@^1.9.6"
+		"solid-js": "npm:solid-js@^1.9.6",
+		"@ui": "./packages/ui/index.ts"
 	},
 	"compilerOptions": {
 		"jsx": "react-jsx",
