@@ -1,0 +1,21 @@
+{
+	"nodeModulesDir": "auto",
+	"workspace": ["apps/web", "apps/desktop", "apps/api"],
+	"tasks": {
+		"api:dev": "deno task --cwd=apps/api dev",
+		"web:dev": "deno task api:dev & deno task --cwd=apps/web dev",
+		"desktop:dev": "deno task api:dev & deno task --cwd=apps/desktop tauri dev"
+	},
+	"imports": {
+		"solid-js": "npm:solid-js@^1.9.6"
+	},
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"jsxImportSource": "solid-js",
+		"lib": ["DOM", "DOM.Iterable", "ESNext"]
+	},
+	"fmt": {
+		"useTabs": true,
+		"indentWidth": 4
+	}
+}

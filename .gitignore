@@ -1,0 +1,16 @@
+node_modules/
+dist/
+target/
+.env
+
+# desktop
+.vite/
+**/gen/schemas/
+
+# web
+.wrangler
+.output
+.vercel
+.netlify
+.vinxi
+app.config.timestamp_*.js

@@ -1,0 +1,11 @@
+{
+	"tasks": {
+		"dev": "vinxi dev",
+		"build": "vinxi build",
+		"start": "vinxi start"
+	},
+	"imports": {
+		"@solidjs/start": "npm:@solidjs/start@^1.1.3",
+		"vinxi": "npm:vinxi@^0.5.6"
+	}
+}

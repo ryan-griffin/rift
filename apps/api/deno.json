@@ -1,0 +1,6 @@
+{
+	"tasks": {
+		"build": "cargo build --release",
+		"dev": "cargo run --release"
+	}
+}
