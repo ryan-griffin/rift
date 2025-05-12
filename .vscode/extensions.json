@@ -1,0 +1,8 @@
+{
+	"recommendations": [
+		"EditorConfig.EditorConfig",
+		"denoland.vscode-deno",
+		"rust-lang.rust-analyzer",
+		"tamasfe.even-better-toml"
+	]
+}
