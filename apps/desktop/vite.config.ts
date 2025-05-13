@@ -2,20 +2,20 @@ import { defineConfig } from "vite";
 import solid from "vite-plugin-solid";
 import path from "node:path";
 import process from "node:process";
+import tailwindcss from "@tailwindcss/vite";
 
-// @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vitejs.dev/config/
-export default defineConfig(async () => ({
-	plugins: [solid()],
+export default defineConfig(() => ({
+	plugins: [solid(), tailwindcss()],
 
 	resolve: {
 		alias: {
 			"@ui": path.resolve(
 				path.dirname(new URL(import.meta.url).pathname),
 				"../../packages/ui/index.ts",
-			), // resolve @ui to the ui package
+			),
 		},
 	},
 
@@ -38,6 +38,9 @@ export default defineConfig(async () => ({
 		watch: {
 			// 3. tell vite to ignore watching `src-tauri`
 			ignored: ["**/src-tauri/**"],
+		},
+		fs: {
+			allow: ["../.."],
 		},
 	},
 }));

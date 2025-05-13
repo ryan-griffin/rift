@@ -1,4 +1,5 @@
 import { createSignal } from "solid-js";
+import "./styles.css";
 import { Button } from "@ui";
 
 export default function App() {
@@ -6,7 +7,7 @@ export default function App() {
 
 	return (
 		<main>
-			<h1>Hello world!</h1>
+			<h1 class="text-2xl text-blue-500">Hello world!</h1>
 			<button type="button" onClick={() => setCount(count() + 1)}>
 				Clicks: {count()}
 			</button>

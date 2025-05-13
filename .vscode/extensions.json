@@ -2,6 +2,7 @@
 	"recommendations": [
 		"EditorConfig.EditorConfig",
 		"denoland.vscode-deno",
+		"bradlc.vscode-tailwindcss",
 		"rust-lang.rust-analyzer",
 		"tamasfe.even-better-toml"
 	]

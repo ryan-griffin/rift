@@ -8,6 +8,8 @@
 	},
 	"imports": {
 		"solid-js": "npm:solid-js@^1.9.6",
+		"tailwindcss": "npm:tailwindcss@^4.1.6",
+		"@tailwindcss/vite": "npm:@tailwindcss/vite@^4.1.6",
 		"@ui": "./packages/ui/index.ts"
 	},
 	"compilerOptions": {

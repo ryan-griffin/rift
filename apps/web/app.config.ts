@@ -1,5 +1,6 @@
 import { defineConfig } from "@solidjs/start/config";
 import path from "node:path";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
 	vite: {
@@ -11,5 +12,6 @@ export default defineConfig({
 				),
 			},
 		},
+		plugins: [tailwindcss()],
 	},
 });

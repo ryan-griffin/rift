@@ -1,5 +1,6 @@
 import { createSignal } from "solid-js";
 import { invoke } from "@tauri-apps/api/core";
+import "./styles.css";
 import { Button } from "@ui";
 
 function App() {
@@ -13,7 +14,7 @@ function App() {
 
 	return (
 		<main>
-			<h1>Welcome to Tauri + Solid</h1>
+			<h1 class="text-2xl text-blue-500">Welcome to Tauri + Solid</h1>
 
 			<form
 				onSubmit={(e) => {
