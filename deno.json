@@ -1,21 +1,10 @@
 {
 	"nodeModulesDir": "auto",
-	"workspace": ["apps/web", "apps/desktop", "apps/api"],
+	"workspace": ["app", "api"],
 	"tasks": {
-		"api:dev": "deno task --cwd=apps/api dev",
-		"web:dev": "deno task api:dev & deno task --cwd=apps/web dev",
-		"desktop:dev": "deno task api:dev & deno task --cwd=apps/desktop tauri dev"
-	},
-	"imports": {
-		"solid-js": "npm:solid-js@^1.9.6",
-		"tailwindcss": "npm:tailwindcss@^4.1.6",
-		"@tailwindcss/vite": "npm:@tailwindcss/vite@^4.1.6",
-		"@ui": "./packages/ui/index.ts"
-	},
-	"compilerOptions": {
-		"jsx": "react-jsx",
-		"jsxImportSource": "solid-js",
-		"lib": ["DOM", "DOM.Iterable", "ESNext"]
+		"api:dev": "deno task --cwd=api dev",
+		"web:dev": "deno task api:dev & deno task --cwd=app dev",
+		"desktop:dev": "deno task api:dev & deno task --cwd=app tauri dev"
 	},
 	"fmt": {
 		"useTabs": true,

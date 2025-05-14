@@ -1,0 +1,23 @@
+{
+	"tasks": {
+		"dev": "vinxi dev",
+		"build": "vinxi build",
+		"start": "vinxi start",
+		"tauri": "tauri"
+	},
+	"imports": {
+		"solid-js": "npm:solid-js@^1.9.6",
+		"@solidjs/start": "npm:@solidjs/start@^1.1.4",
+		"tailwindcss": "npm:tailwindcss@^4.1.6",
+		"@tailwindcss/vite": "npm:@tailwindcss/vite@^4.1.6",
+		"vinxi": "npm:vinxi@^0.5.6",
+		"@tauri-apps/api": "npm:@tauri-apps/api@^2.5.0",
+		"@tauri-apps/cli": "npm:@tauri-apps/cli@^2.5.0",
+		"@tauri-apps/plugin-opener": "npm:@tauri-apps/plugin-opener@^2.2.6"
+	},
+	"compilerOptions": {
+		"jsx": "react-jsx",
+		"jsxImportSource": "solid-js",
+		"lib": ["DOM", "DOM.Iterable", "ESNext"]
+	}
+}

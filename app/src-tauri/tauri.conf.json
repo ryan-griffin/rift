@@ -5,9 +5,9 @@
 	"identifier": "com.rift.app",
 	"build": {
 		"beforeDevCommand": "deno task dev",
-		"devUrl": "http://localhost:1420",
 		"beforeBuildCommand": "deno task build",
-		"frontendDist": "../dist"
+		"devUrl": "http://localhost:3000",
+		"frontendDist": "../.output"
 	},
 	"app": {
 		"windows": [

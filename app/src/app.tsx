@@ -1,9 +1,9 @@
 import { createSignal } from "solid-js";
-import { invoke } from "@tauri-apps/api/core";
 import "./styles.css";
-import { Button } from "@ui";
+import { Button } from "./components/Button.tsx";
+import { invoke } from "@tauri-apps/api/core";
 
-function App() {
+export default function App() {
 	const [greetMsg, setGreetMsg] = createSignal("");
 	const [name, setName] = createSignal("");
 
@@ -34,5 +34,3 @@ function App() {
 		</main>
 	);
 }
-
-export default App;
