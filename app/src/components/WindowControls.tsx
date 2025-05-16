@@ -1,7 +1,7 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import Minus from "../assets/minus.svg?component-solid";
-import Square from "../assets/square.svg?component-solid";
-import X from "../assets/x.svg?component-solid";
+import Minus from "../assets/minus.svg";
+import Square from "../assets/square.svg";
+import X from "../assets/x.svg";
 
 const WindowControls = () => {
 	const currentWindow = getCurrentWindow();
