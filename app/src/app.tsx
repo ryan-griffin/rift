@@ -1,7 +1,8 @@
 import { createSignal } from "solid-js";
 import "./styles.css";
-import { Button } from "./components/Button.tsx";
-import { invoke } from "@tauri-apps/api/core";
+import { invoke, isTauri } from "@tauri-apps/api/core";
+import { isServer } from "solid-js/web";
+import WindowControls from "./components/WindowControls.tsx";
 
 export default function App() {
 	const [greetMsg, setGreetMsg] = createSignal("");
@@ -9,13 +10,17 @@ export default function App() {
 
 	async function greet() {
 		// Learn more about Tauri commands at https://tauri.app/develop/calling-rust/
-		setGreetMsg(await invoke("greet", { name: name() }));
+		if (isTauri()) {
+			setGreetMsg(await invoke("greet", { name: name() }));
+		}
 	}
 
 	return (
 		<main>
-			<h1 class="text-2xl text-blue-500">Welcome to Tauri + Solid</h1>
+			{isTauri() && <WindowControls />}
+			<div>{isServer ? "Server" : "Client"}</div>
 
+			<h1 class="text-2xl text-blue-500">Welcome to Tauri + Solid</h1>
 			<form
 				onSubmit={(e) => {
 					e.preventDefault();
@@ -30,7 +35,6 @@ export default function App() {
 				<button type="submit">Greet</button>
 			</form>
 			<p>{greetMsg()}</p>
-			<Button />
 		</main>
 	);
 }

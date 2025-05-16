@@ -1,12 +1,13 @@
 import { defineConfig } from "@solidjs/start/config";
 import process from "node:process";
 import tailwindcss from "@tailwindcss/vite";
+import solidSvg from "vite-plugin-solid-svg";
 
 const host = process.env.TAURI_DEV_HOST;
 
 export default defineConfig({
 	vite: {
-		plugins: [tailwindcss()],
+		plugins: [tailwindcss(), solidSvg()],
 		// 1. prevent vite from obscuring rust errors
 		clearScreen: false,
 		// 2. tauri expects a fixed port, fail if that port is not available
