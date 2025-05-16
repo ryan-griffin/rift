@@ -1,11 +1,12 @@
 import { defineConfig } from "@solidjs/start/config";
-import process from "node:process";
 import tailwindcss from "@tailwindcss/vite";
 import solidSvg from "vite-plugin-solid-svg";
 
-const host = process.env.TAURI_DEV_HOST;
+const host = Deno.env.get("TAURI_DEV_HOST");
+const isTauri = Deno.env.get("TAURI_ENV_PLATFORM") !== undefined;
 
 export default defineConfig({
+	ssr: !isTauri,
 	vite: {
 		plugins: [tailwindcss(), solidSvg()],
 		// 1. prevent vite from obscuring rust errors

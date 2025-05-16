@@ -19,6 +19,6 @@
 	"compilerOptions": {
 		"jsx": "react-jsx",
 		"jsxImportSource": "solid-js",
-		"lib": ["DOM", "DOM.Iterable", "ESNext"]
+		"lib": ["deno.ns", "DOM", "DOM.Iterable", "ESNext"]
 	}
 }
