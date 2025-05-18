@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import Button from "./Button.tsx";
 import Minus from "../assets/minus.svg";
 import Square from "../assets/square.svg";
 import X from "../assets/x.svg";
@@ -7,7 +8,7 @@ const WindowControls = () => {
 	const currentWindow = getCurrentWindow();
 
 	return (
-		<div class="sticky top-0 flex p-1 justify-end bg-gray-100 select-none">
+		<div class="fixed top-0 w-full flex p-1 justify-end select-none">
 			<div
 				data-tauri-drag-region
 				class="w-full"
@@ -19,27 +20,24 @@ const WindowControls = () => {
 					}
 				}}
 			/>
-			<button
+			<Button
+				variant="flat"
 				type="button"
-				class="select-none p-1"
+				icon={<Minus />}
 				onClick={() => currentWindow.minimize()}
-			>
-				<Minus />
-			</button>
-			<button
+			/>
+			<Button
+				variant="flat"
 				type="button"
-				class="select-none p-1"
+				icon={<Square />}
 				onClick={() => currentWindow.toggleMaximize()}
-			>
-				<Square />
-			</button>
-			<button
+			/>
+			<Button
+				variant="flat"
 				type="button"
-				class="select-none p-1"
+				icon={<X />}
 				onClick={() => currentWindow.close()}
-			>
-				<X />
-			</button>
+			/>
 		</div>
 	);
 };

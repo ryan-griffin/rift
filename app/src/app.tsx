@@ -1,8 +1,12 @@
-import { createSignal } from "solid-js";
+import { createSignal, onMount } from "solid-js";
 import "./styles.css";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 import { isServer } from "solid-js/web";
 import WindowControls from "./components/WindowControls.tsx";
+import Button from "./components/Button.tsx";
+import { initializeTheme } from "./colorUtils.ts";
+import Tree from "./components/Tree.tsx";
+import Splitter from "./components/Spiltter.tsx";
 
 export default function App() {
 	const [greetMsg, setGreetMsg] = createSignal("");
@@ -15,26 +19,43 @@ export default function App() {
 		}
 	}
 
-	return (
-		<main>
-			{isTauri() && <WindowControls />}
-			<div>{isServer ? "Server" : "Client"}</div>
+	onMount(() => {
+		initializeTheme();
+	});
 
-			<h1 class="text-2xl text-blue-500">Welcome to Tauri + Solid</h1>
-			<form
-				onSubmit={(e) => {
-					e.preventDefault();
-					greet();
-				}}
-			>
-				<input
-					id="greet-input"
-					onChange={(e) => setName(e.currentTarget.value)}
-					placeholder="Enter a name..."
-				/>
-				<button type="submit">Greet</button>
-			</form>
-			<p>{greetMsg()}</p>
+	return (
+		<main class="flex">
+			{isTauri() && <WindowControls />}
+			<Splitter
+				a={<Tree />}
+				b={
+					<div class="p-10 m-10">
+						<div>{isServer ? "Server" : "Client"}</div>
+
+						<h1 class="text-2xl text-accent-500">
+							Welcome to Tauri + Solid
+						</h1>
+						<form
+							onSubmit={(e) => {
+								e.preventDefault();
+								greet();
+							}}
+						>
+							<input
+								id="greet-input"
+								onChange={(e) => setName(e.currentTarget.value)}
+								placeholder="Enter a name..."
+							/>
+							<Button
+								type="submit"
+								variant="suggested"
+								text="Greet"
+							/>
+						</form>
+						<p>{greetMsg()}</p>
+					</div>
+				}
+			/>
 		</main>
 	);
 }

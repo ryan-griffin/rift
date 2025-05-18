@@ -1,1 +1,31 @@
 @import "tailwindcss";
+
+:root {
+	--default-base-color: #b34472;
+}
+
+@theme {
+	--color-accent-50: unset;
+	--color-accent-100: unset;
+	--color-accent-200: unset;
+	--color-accent-300: unset;
+	--color-accent-400: unset;
+	--color-accent-500: unset;
+	--color-accent-600: unset;
+	--color-accent-700: unset;
+	--color-accent-800: unset;
+	--color-accent-900: unset;
+	--color-accent-950: unset;
+
+	--color-background-50: unset;
+	--color-background-100: unset;
+	--color-background-200: unset;
+	--color-background-300: unset;
+	--color-background-400: unset;
+	--color-background-500: unset;
+	--color-background-600: unset;
+	--color-background-700: unset;
+	--color-background-800: unset;
+	--color-background-900: unset;
+	--color-background-950: unset;
+}
