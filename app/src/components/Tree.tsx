@@ -82,7 +82,7 @@ const TreeNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
 				<TreeView.Branch class="flex flex-col gap-1">
 					<TreeView.BranchControl>
 						<TreeView.BranchText
-							class={`${nodeClass} group`}
+							class={`${nodeClass} group text-background-400 dark:text-background-500 font-bold`}
 						>
 							<ChevronRight class="group-data-[state=open]:rotate-90 transition-transform duration-200" />
 							{node.name}
