@@ -1,6 +1,7 @@
 {
 	"dependencies": {
 		"@ark-ui/solid": "^5.9.1",
+		"@solidjs/router": "^0.15.3",
 		"solid-js": "^1.9.6",
 		"@solidjs/start": "^1.1.4",
 		"tailwindcss": "^4.1.7",

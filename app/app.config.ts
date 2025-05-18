@@ -13,6 +13,13 @@ export default defineConfig({
 		clearScreen: false,
 		// 2. tauri expects a fixed port, fail if that port is not available
 		server: {
+			proxy: {
+				"/api": {
+					target: "http://localhost:8080",
+					changeOrigin: true,
+					rewrite: (path: string) => path.replace(/^\/api/, ""),
+				},
+			},
 			port: 3000,
 			strictPort: true,
 			host: host || false,

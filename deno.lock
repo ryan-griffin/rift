@@ -2,6 +2,7 @@
   "version": "4",
   "specifiers": {
     "npm:@ark-ui/solid@^5.9.1": "5.9.1_solid-js@1.9.7__seroval@1.3.1_@internationalized+date@3.8.0",
+    "npm:@solidjs/router@~0.15.3": "0.15.3_solid-js@1.9.7__seroval@1.3.1",
     "npm:@solidjs/start@^1.1.4": "1.1.4_vinxi@0.5.6__@babel+core@7.27.1_seroval@1.3.1_solid-js@1.9.7__seroval@1.3.1_@types+node@22.12.0",
     "npm:@tailwindcss/vite@^4.1.7": "4.1.7_vite@6.3.5__picomatch@4.0.2_@types+node@22.12.0",
     "npm:@tauri-apps/api@^2.5.0": "2.5.0",
@@ -940,6 +941,12 @@
     },
     "@solid-primitives/keyed@1.5.1_solid-js@1.9.7__seroval@1.3.1": {
       "integrity": "sha512-lAgQ1Jou8nxywifWsWjDTla9MI7Pfr46JRTC40K81fqz8dw4E8t/4gYuIwqP1EHVG0mItfIb3XqDw0wEQh+QYA==",
+      "dependencies": [
+        "solid-js"
+      ]
+    },
+    "@solidjs/router@0.15.3_solid-js@1.9.7__seroval@1.3.1": {
+      "integrity": "sha512-iEbW8UKok2Oio7o6Y4VTzLj+KFCmQPGEpm1fS3xixwFBdclFVBvaQVeibl1jys4cujfAK5Kn6+uG2uBm3lxOMw==",
       "dependencies": [
         "solid-js"
       ]
@@ -5707,6 +5714,7 @@
         "packageJson": {
           "dependencies": [
             "npm:@ark-ui/solid@^5.9.1",
+            "npm:@solidjs/router@~0.15.3",
             "npm:@solidjs/start@^1.1.4",
             "npm:@tailwindcss/vite@^4.1.7",
             "npm:@tauri-apps/api@^2.5.0",
