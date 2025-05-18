@@ -1,60 +1,15 @@
-import { Component, For, Show } from "solid-js";
+import { Component, createResource, For, Show, Suspense } from "solid-js";
 import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
 
 interface Node {
-	id: string;
+	id: number;
 	name: string;
 	children?: Node[];
 }
 
-const collection = createTreeCollection<Node>({
-	nodeToValue: (node) => node.id,
-	nodeToString: (node) => node.name,
-	rootNode: {
-		id: "ROOT",
-		name: "",
-		children: [
-			{
-				id: "general",
-				"name": "General",
-			},
-			{
-				id: "gaming",
-				name: "Gaming",
-				children: [
-					{ id: "roblox", name: "Roblox" },
-					{ id: "fortnite", name: "Fortnite" },
-					{
-						id: "minecraft",
-						name: "Minecraft",
-						children: [
-							{ id: "mods", name: "Mods" },
-							{
-								id: "modpacks",
-								name: "Modpacks",
-							},
-						],
-					},
-				],
-			},
-			{
-				id: "programming",
-				name: "Programming",
-				children: [
-					{ id: "typescript", name: "TypeScript" },
-					{ id: "rust", name: "Rust" },
-				],
-			},
-			{ id: "announcements", name: "Announcements" },
-			{ id: "memes", name: "Memes" },
-			{ id: "help", name: "Help" },
-		],
-	},
-});
-
-const TreeNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
+const DirectoryNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
 	const { node, indexPath } = props;
 	const nodeClass =
 		"flex p-2 gap-2 rounded-lg hover:bg-background-100 dark:hover:bg-background-800 transition-colors duration-100 cursor-pointer select-none";
@@ -98,7 +53,7 @@ const TreeNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
 						<div class="flex flex-col gap-1 grow">
 							<For each={node.children}>
 								{(child, index) => (
-									<TreeNode
+									<DirectoryNode
 										node={child}
 										indexPath={[...indexPath, index()]}
 									/>
@@ -112,22 +67,40 @@ const TreeNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
 	);
 };
 
-const Tree = () => {
+const Directory = () => {
+	const [directory] = createResource<Node>(async () => {
+		const res = await fetch("http://localhost:3000/api/directory");
+		return res.json();
+	});
+
 	return (
-		<TreeView.Root
-			collection={collection}
-			class="flex flex-col h-screen p-4 gap-4 bg-background-50 dark:bg-background-900"
-		>
-			<TreeView.Label>Rift</TreeView.Label>
-			<TreeView.Tree class="flex flex-col gap-1">
-				<For each={collection.rootNode.children}>
-					{(node, index) => (
-						<TreeNode node={node} indexPath={[index()]} />
-					)}
-				</For>
-			</TreeView.Tree>
-		</TreeView.Root>
+		<Suspense fallback={<div>Loading...</div>}>
+			<Show when={directory()}>
+				{(directoryData) => (
+					<TreeView.Root
+						class="flex flex-col h-screen p-4 gap-4 bg-background-50 dark:bg-background-900"
+						collection={createTreeCollection<Node>({
+							nodeToValue: (node) => node.id.toString(),
+							nodeToString: (node) => node.name,
+							rootNode: directoryData(),
+						})}
+					>
+						<TreeView.Label>Rift</TreeView.Label>
+						<TreeView.Tree class="flex flex-col gap-1">
+							<For each={directoryData().children}>
+								{(node, index) => (
+									<DirectoryNode
+										node={node}
+										indexPath={[index()]}
+									/>
+								)}
+							</For>
+						</TreeView.Tree>
+					</TreeView.Root>
+				)}
+			</Show>
+		</Suspense>
 	);
 };
 
-export default Tree;
+export default Directory;

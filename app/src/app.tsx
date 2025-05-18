@@ -5,7 +5,7 @@ import { isTauri } from "@tauri-apps/api/core";
 import { initializeTheme } from "./colorUtils.ts";
 import WindowControls from "./components/WindowControls.tsx";
 import Splitter from "./components/Spiltter.tsx";
-import Tree from "./components/Tree.tsx";
+import Directory from "./components/Directory.tsx";
 import Index from "./routes/Index.tsx";
 
 export default function App() {
@@ -19,7 +19,7 @@ export default function App() {
 				<WindowControls />
 			</Show>
 			<Splitter
-				a={<Tree />}
+				a={<Directory />}
 				b={
 					<Router>
 						<Route path="/" component={Index} />
