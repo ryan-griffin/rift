@@ -8,8 +8,8 @@ interface Props {
 
 const Splitter: Component<Props> = (props) => (
 	<ArkSplitter.Root
-		defaultSize={[25, 75]}
-		panels={[{ id: "a", minSize: 25 }, { id: "b", minSize: 25 }]}
+		defaultSize={[30, 70]}
+		panels={[{ id: "a", minSize: 25 }, { id: "b", minSize: 60 }]}
 	>
 		<ArkSplitter.Panel id="a">{props.a}</ArkSplitter.Panel>
 		<ArkSplitter.ResizeTrigger

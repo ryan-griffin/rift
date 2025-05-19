@@ -7,6 +7,7 @@ import WindowControls from "./components/WindowControls.tsx";
 import Splitter from "./components/Spiltter.tsx";
 import Nav from "./components/Nav.tsx";
 import Index from "./routes/Index.tsx";
+import Members from "./components/Members.tsx";
 
 export default function App() {
 	onMount(() => {
@@ -14,7 +15,7 @@ export default function App() {
 	});
 
 	return (
-		<>
+		<div class="flex">
 			<Show when={isTauri()}>
 				<WindowControls />
 			</Show>
@@ -26,6 +27,7 @@ export default function App() {
 					</Router>
 				}
 			/>
-		</>
+			<Members />
+		</div>
 	);
 }
