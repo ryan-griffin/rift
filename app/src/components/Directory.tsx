@@ -78,15 +78,13 @@ const Directory = () => {
 			<Show when={directory()}>
 				{(directoryData) => (
 					<TreeView.Root
-						class="flex flex-col h-screen p-4 gap-4 bg-background-50 dark:bg-background-900"
 						collection={createTreeCollection<Node>({
 							nodeToValue: (node) => node.id.toString(),
 							nodeToString: (node) => node.name,
 							rootNode: directoryData(),
 						})}
 					>
-						<TreeView.Label>Rift</TreeView.Label>
-						<TreeView.Tree class="flex flex-col gap-1">
+						<TreeView.Tree class="flex flex-col p-4 pt-0 gap-1 overflow-auto">
 							<For each={directoryData().children}>
 								{(node, index) => (
 									<DirectoryNode
