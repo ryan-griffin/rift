@@ -11,7 +11,10 @@ use tokio::net::TcpListener;
 async fn main() {
     dotenvy::dotenv().expect("Failed to load .env file");
 
-    let conn = Database::connect(&env::var("DATABASE_URL").unwrap())
+    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let api_port = env::var("API_PORT").expect("API_PORT must be set");
+
+    let conn = Database::connect(&database_url)
         .await
         .expect("Failed to connect to the database");
 
@@ -25,8 +28,10 @@ async fn main() {
         .route("/directory", get(get_directory))
         .with_state(conn);
 
-    let listener = TcpListener::bind("0.0.0.0:8080").await.unwrap();
-    println!("Server running on http://localhost:8080");
+    let listener = TcpListener::bind(format!("0.0.0.0:{}", api_port))
+        .await
+        .unwrap();
+    println!("Server running on http://localhost:{}", api_port);
     axum::serve(listener, app).await.unwrap();
 }
 

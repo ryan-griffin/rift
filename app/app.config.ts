@@ -1,9 +1,15 @@
+import { config } from "dotenv";
+import { resolve } from "node:path";
+import process from "node:process";
 import { defineConfig } from "@solidjs/start/config";
 import tailwindcss from "@tailwindcss/vite";
 import solidSvg from "vite-plugin-solid-svg";
 
-const host = Deno.env.get("TAURI_DEV_HOST");
-const isTauri = Deno.env.get("TAURI_ENV_PLATFORM") !== undefined;
+config({ path: resolve("../.env") });
+
+const apiPort = +process.env.API_PORT!;
+const host = process.env.TAURI_DEV_HOST;
+const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined;
 
 export default defineConfig({
 	ssr: !isTauri,
@@ -15,7 +21,7 @@ export default defineConfig({
 		server: {
 			proxy: {
 				"/api": {
-					target: "http://localhost:8080",
+					target: `http://localhost:${apiPort}`,
 					changeOrigin: true,
 					rewrite: (path: string) => path.replace(/^\/api/, ""),
 				},
