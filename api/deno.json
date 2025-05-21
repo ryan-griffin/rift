@@ -1,6 +1,6 @@
 {
 	"tasks": {
-		"build": "cargo build --release",
-		"dev": "cargo run --release"
+		"dev": "cargo run --release",
+		"migrate:reset": "cd migration && cargo run -- fresh"
 	}
 }

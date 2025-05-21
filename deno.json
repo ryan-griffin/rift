@@ -2,9 +2,8 @@
 	"nodeModulesDir": "auto",
 	"workspace": ["app", "api"],
 	"tasks": {
-		"api:dev": "deno task --cwd=api dev",
-		"web:dev": "deno task api:dev & deno task --cwd=app dev",
-		"desktop:dev": "deno task api:dev & deno task --cwd=app tauri dev"
+		"api": "deno task --cwd=api",
+		"app": "deno task api dev & deno task --cwd=app"
 	},
 	"fmt": {
 		"useTabs": true,
