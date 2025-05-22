@@ -39,6 +39,7 @@ impl MigrationTrait for Migration {
                 ["Programming".into(), "folder".into(), Some(1).into()],
                 ["Announcements".into(), "channel".into(), Some(1).into()],
                 ["Memes".into(), "channel".into(), Some(1).into()],
+                ["Events".into(), "folder".into(), Some(1).into()],
                 ["Help".into(), "channel".into(), Some(1).into()],
             ])
             .to_owned();
@@ -61,8 +62,8 @@ impl MigrationTrait for Migration {
             .into_table(Directory::Table)
             .columns([Directory::Name, Directory::Type, Directory::ParentId])
             .values_from_panic(vec![
-                ["Mods".into(), "channel".into(), Some(10).into()],
-                ["Modpacks".into(), "channel".into(), Some(10).into()],
+                ["Mods".into(), "channel".into(), Some(11).into()],
+                ["Modpacks".into(), "channel".into(), Some(11).into()],
             ])
             .to_owned();
         manager.exec_stmt(level3_insert).await?;

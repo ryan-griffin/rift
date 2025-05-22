@@ -6,10 +6,49 @@ import MessageSquareText from "../assets/message-square-text.svg";
 interface Node {
 	id: number;
 	name: string;
-	children?: Node[];
+	type: "folder" | "channel";
+	parent_id: number | null;
 }
 
-const DirectoryNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
+interface DirectoryNode {
+	id: number;
+	name: string;
+	type: "folder" | "channel";
+	children?: DirectoryNode[];
+}
+
+const buildDirectory = (nodes: Node[]): DirectoryNode | undefined => {
+	const nodeMap = new Map<number, DirectoryNode>();
+
+	for (const node of nodes) {
+		nodeMap.set(node.id, {
+			id: node.id,
+			name: node.name,
+			type: node.type,
+		});
+	}
+
+	const root = nodes.find((node) => node.parent_id === null);
+	if (!root) return;
+
+	for (const node of nodes) {
+		if (node.parent_id !== null) {
+			const parent = nodeMap.get(node.parent_id);
+			const child = nodeMap.get(node.id);
+
+			if (parent && child) {
+				if (!parent.children) parent.children = [];
+				parent.children.push(child);
+			}
+		}
+	}
+
+	return nodeMap.get(root.id);
+};
+
+const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
+	props,
+) => {
 	const { node, indexPath } = props;
 	const nodeClass =
 		"flex p-2 gap-2 rounded-lg hover:bg-background-100 dark:hover:bg-background-800 transition-colors duration-100 cursor-pointer select-none";
@@ -17,7 +56,7 @@ const DirectoryNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
 	return (
 		<TreeView.NodeProvider node={node} indexPath={indexPath}>
 			<Show
-				when={node.children}
+				when={node.type === "folder"}
 				fallback={
 					<TreeView.Item>
 						{
@@ -53,7 +92,7 @@ const DirectoryNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
 						<div class="flex flex-col gap-1 grow">
 							<For each={node.children}>
 								{(child, index) => (
-									<DirectoryNode
+									<DirectoryItem
 										node={child}
 										indexPath={[...indexPath, index()]}
 									/>
@@ -68,34 +107,39 @@ const DirectoryNode: Component<TreeView.NodeProviderProps<Node>> = (props) => {
 };
 
 const Directory = () => {
-	const [directory] = createResource<Node>(async () => {
+	const [nodes] = createResource<Node[]>(async () => {
 		const res = await fetch("http://localhost:3000/api/directory");
 		return res.json();
 	});
 
 	return (
-		<Suspense fallback={<div>Loading...</div>}>
-			<Show when={directory()}>
-				{(directoryData) => (
-					<TreeView.Root
-						collection={createTreeCollection<Node>({
-							nodeToValue: (node) => node.id.toString(),
-							nodeToString: (node) => node.name,
-							rootNode: directoryData(),
-						})}
-					>
-						<TreeView.Tree class="flex flex-col p-4 pt-0 gap-1 overflow-auto">
-							<For each={directoryData().children}>
-								{(node, index) => (
-									<DirectoryNode
-										node={node}
-										indexPath={[index()]}
-									/>
-								)}
-							</For>
-						</TreeView.Tree>
-					</TreeView.Root>
-				)}
+		<Suspense fallback={<p>Loading...</p>}>
+			<Show when={nodes()}>
+				{(nodesData) => {
+					const directory = buildDirectory(nodesData());
+					if (!directory) return;
+
+					return (
+						<TreeView.Root
+							collection={createTreeCollection<DirectoryNode>({
+								nodeToValue: (node) => node.id.toString(),
+								nodeToString: (node) => node.name,
+								rootNode: directory,
+							})}
+						>
+							<TreeView.Tree class="flex flex-col p-4 pt-0 gap-1 overflow-auto">
+								<For each={directory.children}>
+									{(node, index) => (
+										<DirectoryItem
+											node={node}
+											indexPath={[index()]}
+										/>
+									)}
+								</For>
+							</TreeView.Tree>
+						</TreeView.Root>
+					);
+				}}
 			</Show>
 		</Suspense>
 	);
