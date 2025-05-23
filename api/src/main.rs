@@ -1,5 +1,11 @@
 mod db;
-use axum::{Json, Router, extract::State, http::StatusCode, response::Result, routing::get};
+use axum::{
+    Json, Router,
+    extract::{Path, State},
+    http::StatusCode,
+    response::Result,
+    routing::get,
+};
 use entity::directory::Model as Directory;
 use entity::users::Model as User;
 use migration::{Migrator, MigratorTrait};
@@ -25,7 +31,7 @@ async fn main() {
     let app = Router::new()
         .route("/users", get(get_users))
         // .route("/users/{username}", get(get_user))
-        .route("/directory", get(get_directory))
+        .route("/directory/{id}", get(get_directory))
         .with_state(conn);
 
     let listener = TcpListener::bind(format!("0.0.0.0:{}", api_port))
@@ -50,8 +56,11 @@ async fn get_users(State(conn): State<DatabaseConnection>) -> Result<Json<Vec<Us
 //     Json(user.cloned())
 // }
 
-async fn get_directory(State(conn): State<DatabaseConnection>) -> Result<Json<Vec<Directory>>> {
-    match db::get_directory(&conn).await {
+async fn get_directory(
+    State(conn): State<DatabaseConnection>,
+    Path(id): Path<i32>,
+) -> Result<Json<Vec<Directory>>> {
+    match db::get_directory(&conn, id).await {
         Ok(directories) => Ok(Json(directories)),
         Err(err) => {
             eprintln!("{err}");
