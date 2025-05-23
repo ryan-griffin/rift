@@ -8,7 +8,7 @@ const WindowControls = () => {
 	const currentWindow = getCurrentWindow();
 
 	return (
-		<div class="fixed top-0 w-full flex p-1 justify-end select-none">
+		<div class="w-full flex p-1 select-none">
 			<div
 				data-tauri-drag-region
 				class="w-full"
@@ -19,7 +19,9 @@ const WindowControls = () => {
 							: currentWindow.startDragging();
 					}
 				}}
-			/>
+			>
+				<p class="p-2 font-bold">Rift</p>
+			</div>
 			<Button
 				variant="flat"
 				type="button"

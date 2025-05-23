@@ -51,7 +51,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 ) => {
 	const { node, indexPath } = props;
 	const nodeClass =
-		"flex p-2 gap-2 rounded-lg hover:bg-background-100 dark:hover:bg-background-800 transition-colors duration-100 cursor-pointer select-none";
+		"flex p-2 gap-2 rounded-lg hover:bg-background-200 dark:hover:bg-background-800 transition-colors duration-100 cursor-pointer select-none";
 
 	return (
 		<TreeView.NodeProvider node={node} indexPath={indexPath}>
@@ -88,7 +88,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 						}
 					</TreeView.BranchControl>
 					<TreeView.BranchContent class="flex gap-3">
-						<TreeView.BranchIndentGuide class="border-l-2 border-background-100 dark:border-background-800 ml-4" />
+						<TreeView.BranchIndentGuide class="border-l-2 border-background-200 dark:border-background-900 ml-4" />
 						<div class="flex flex-col gap-1 grow">
 							<For each={node.children}>
 								{(child, index) => (
@@ -127,7 +127,7 @@ const Directory = () => {
 								rootNode: directory,
 							})}
 						>
-							<TreeView.Tree class="flex flex-col p-4 pt-0 gap-1 overflow-auto">
+							<TreeView.Tree class="flex flex-col p-2 gap-1">
 								<For each={directory.children}>
 									{(node, index) => (
 										<DirectoryItem

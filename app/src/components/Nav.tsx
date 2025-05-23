@@ -5,15 +5,14 @@ import Settings from "../assets/settings.svg";
 
 const Nav: Component = () => {
 	return (
-		<nav class="relative h-screen bg-background-50 dark:bg-background-900">
-			<div class="p-4 font-bold">Rift</div>
+		<nav class="relative h-full">
 			<Directory />
-			<div class="absolute bottom-0 w-[calc(100%-2rem)] flex p-2 gap-2 m-4 items-center justify-between rounded-xl bg-background-100 dark:bg-background-800 shadow-sm">
+			<div class="absolute bottom-0 w-full flex p-2 gap-2 items-center justify-between rounded-xl bg-background-50 dark:bg-background-900">
 				<div class="flex gap-2 items-center">
-					<div class="w-10 h-10 rounded-full bg-background-200 dark:bg-background-700" />
+					<div class="w-10 h-10 rounded-full bg-background-100 dark:bg-background-800" />
 					User
 				</div>
-				<Button variant="regular" icon={<Settings />} />
+				<Button variant="flat" icon={<Settings />} />
 			</div>
 		</nav>
 	);

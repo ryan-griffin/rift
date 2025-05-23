@@ -15,19 +15,29 @@ export default function App() {
 	});
 
 	return (
-		<div class="flex">
+		<>
 			<Show when={isTauri()}>
 				<WindowControls />
 			</Show>
-			<Splitter
-				a={<Nav />}
-				b={
-					<Router>
-						<Route path="/" component={Index} />
-					</Router>
-				}
-			/>
-			<Members />
-		</div>
+			<div
+				class={`flex m-2 gap-2 ${
+					isTauri()
+						? "h-[calc(100vh-3.5rem)] mt-0"
+						: "h-[calc(100vh-1rem)]"
+				}`}
+			>
+				<Splitter
+					a={<Nav />}
+					b={
+						<main class="h-full p-8 rounded-xl bg-background-50 dark:bg-background-900">
+							<Router>
+								<Route path="/" component={Index} />
+							</Router>
+						</main>
+					}
+				/>
+				<Members />
+			</div>
+		</>
 	);
 }

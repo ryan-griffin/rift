@@ -13,7 +13,7 @@ const Splitter: Component<Props> = (props) => (
 	>
 		<ArkSplitter.Panel id="a">{props.a}</ArkSplitter.Panel>
 		<ArkSplitter.ResizeTrigger
-			class="w-1 -translate-x-0.5"
+			class="w-2"
 			id="a:b"
 			aria-label="Resize"
 		/>
