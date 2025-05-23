@@ -7,7 +7,7 @@ const Members: Component = () => {
 	});
 
 	return (
-		<div class="h-screen w-1/4 flex flex-col p-4 gap-2 bg-background-50 dark:bg-background-900">
+		<div class="w-1/4 flex flex-col p-4 gap-2 rounded-xl bg-background-50 dark:bg-background-900">
 			<p class="font-bold text-sm text-background-400 dark:text-background-500">
 				Members
 			</p>
