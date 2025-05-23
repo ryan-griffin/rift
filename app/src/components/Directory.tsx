@@ -108,7 +108,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 
 const Directory = () => {
 	const [nodes] = createResource<Node[]>(async () => {
-		const res = await fetch("http://localhost:3000/api/directory");
+		const res = await fetch("http://localhost:3000/api/directory/1");
 		return res.json();
 	});
 
