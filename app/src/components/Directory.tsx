@@ -7,14 +7,14 @@ import MessageSquareText from "../assets/message-square-text.svg";
 interface Node {
 	id: number;
 	name: string;
-	type: "folder" | "channel";
+	type: "folder" | "thread";
 	parent_id: number | null;
 }
 
 interface DirectoryNode {
 	id: number;
 	name: string;
-	type: "folder" | "channel";
+	type: "folder" | "thread";
 	path: string;
 	children?: DirectoryNode[];
 }
