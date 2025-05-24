@@ -34,13 +34,13 @@ impl MigrationTrait for Migration {
             .into_table(Directory::Table)
             .columns([Directory::Name, Directory::Type, Directory::ParentId])
             .values_from_panic(vec![
-                ["General".into(), "channel".into(), Some(1).into()],
+                ["General".into(), "thread".into(), Some(1).into()],
                 ["Gaming".into(), "folder".into(), Some(1).into()],
                 ["Programming".into(), "folder".into(), Some(1).into()],
-                ["Announcements".into(), "channel".into(), Some(1).into()],
-                ["Memes".into(), "channel".into(), Some(1).into()],
+                ["Announcements".into(), "thread".into(), Some(1).into()],
+                ["Memes".into(), "thread".into(), Some(1).into()],
                 ["Events".into(), "folder".into(), Some(1).into()],
-                ["Help".into(), "channel".into(), Some(1).into()],
+                ["Help".into(), "thread".into(), Some(1).into()],
             ])
             .to_owned();
         manager.exec_stmt(level1_insert).await?;
@@ -49,11 +49,11 @@ impl MigrationTrait for Migration {
             .into_table(Directory::Table)
             .columns([Directory::Name, Directory::Type, Directory::ParentId])
             .values_from_panic(vec![
-                ["Roblox".into(), "channel".into(), Some(3).into()],
-                ["Fortnite".into(), "channel".into(), Some(3).into()],
+                ["Roblox".into(), "thread".into(), Some(3).into()],
+                ["Fortnite".into(), "thread".into(), Some(3).into()],
                 ["Minecraft".into(), "folder".into(), Some(3).into()],
-                ["TypeScript".into(), "channel".into(), Some(4).into()],
-                ["Rust".into(), "channel".into(), Some(4).into()],
+                ["TypeScript".into(), "thread".into(), Some(4).into()],
+                ["Rust".into(), "thread".into(), Some(4).into()],
             ])
             .to_owned();
         manager.exec_stmt(level2_insert).await?;
@@ -62,8 +62,8 @@ impl MigrationTrait for Migration {
             .into_table(Directory::Table)
             .columns([Directory::Name, Directory::Type, Directory::ParentId])
             .values_from_panic(vec![
-                ["Mods".into(), "channel".into(), Some(11).into()],
-                ["Modpacks".into(), "channel".into(), Some(11).into()],
+                ["Mods".into(), "thread".into(), Some(11).into()],
+                ["Modpacks".into(), "thread".into(), Some(11).into()],
             ])
             .to_owned();
         manager.exec_stmt(level3_insert).await?;

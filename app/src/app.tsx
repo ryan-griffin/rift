@@ -8,7 +8,7 @@ import Splitter from "./components/Spiltter.tsx";
 import Nav from "./components/Nav.tsx";
 import Index from "./routes/Index.tsx";
 import Members from "./components/Members.tsx";
-import Channel from "./routes/Channel.tsx";
+import Thread from "./routes/Thread.tsx";
 
 export default function App() {
 	onMount(() => {
@@ -43,7 +43,7 @@ export default function App() {
 			)}
 		>
 			<Route path="/" component={Index} />
-			<Route path="/directory/*path" component={Channel} />
+			<Route path="/directory/*path" component={Thread} />
 		</Router>
 	);
 }
