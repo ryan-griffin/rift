@@ -1,4 +1,5 @@
 import { Component, createResource, For, Show, Suspense } from "solid-js";
+import { A } from "@solidjs/router";
 import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
@@ -14,6 +15,7 @@ interface DirectoryNode {
 	id: number;
 	name: string;
 	type: "folder" | "channel";
+	path: string;
 	children?: DirectoryNode[];
 }
 
@@ -25,24 +27,33 @@ const buildDirectory = (nodes: Node[]): DirectoryNode | undefined => {
 			id: node.id,
 			name: node.name,
 			type: node.type,
+			path: "",
 		});
 	}
 
 	const root = nodes.find((node) => node.parent_id === null);
 	if (!root) return;
 
-	for (const node of nodes) {
-		if (node.parent_id !== null) {
-			const parent = nodeMap.get(node.parent_id);
-			const child = nodeMap.get(node.id);
+	const buildPaths = (nodeId: number, parentPath: string = "/directory") => {
+		const currentNode = nodeMap.get(nodeId);
+		if (!currentNode) return;
 
-			if (parent && child) {
-				if (!parent.children) parent.children = [];
-				parent.children.push(child);
+		currentNode.path = parentPath;
+
+		const children = nodes.filter((node) => node.parent_id === nodeId);
+		for (const child of children) {
+			const childNode = nodeMap.get(child.id);
+			if (childNode) {
+				if (!currentNode.children) currentNode.children = [];
+				currentNode.children.push(childNode);
+
+				const childPath = parentPath + "/" + child.name;
+				buildPaths(child.id, childPath);
 			}
 		}
-	}
+	};
 
+	buildPaths(root.id);
 	return nodeMap.get(root.id);
 };
 
@@ -51,41 +62,32 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 ) => {
 	const { node, indexPath } = props;
 	const nodeClass =
-		"flex p-2 gap-2 rounded-lg hover:bg-background-200 dark:hover:bg-background-800 transition-colors duration-100 cursor-pointer select-none";
+		"flex p-2 gap-2 rounded-lg transition-colors duration-100 cursor-pointer select-none";
 
 	return (
 		<TreeView.NodeProvider node={node} indexPath={indexPath}>
 			<Show
 				when={node.type === "folder"}
 				fallback={
-					<TreeView.Item>
-						{
-							/* <TreeView.ItemIndicator>
-							<Square />
-						</TreeView.ItemIndicator> */
-						}
-						<TreeView.ItemText
-							class={`${nodeClass} data-[selected]:bg-accent-100 data-[selected]:hover:bg-accent-100 data-[selected]:dark:bg-accent-800 data-[selected]:dark:hover:bg-accent-800`}
-						>
-							<MessageSquareText />
-							{node.name}
-						</TreeView.ItemText>
-					</TreeView.Item>
+					<A
+						href={node.path}
+						class={nodeClass}
+						inactiveClass="hover:bg-background-200 dark:hover:bg-background-800"
+						activeClass="bg-accent-100 dark:bg-accent-800"
+					>
+						<MessageSquareText />
+						{node.name}
+					</A>
 				}
 			>
 				<TreeView.Branch class="flex flex-col gap-1">
 					<TreeView.BranchControl>
 						<TreeView.BranchText
-							class={`${nodeClass} group text-background-400 dark:text-background-500 font-bold`}
+							class={`${nodeClass} hover:bg-background-200 dark:hover:bg-background-800 group text-background-400 dark:text-background-500 font-bold`}
 						>
 							<ChevronRight class="group-data-[state=open]:rotate-90 transition-transform duration-200" />
 							{node.name}
 						</TreeView.BranchText>
-						{
-							/* <TreeView.BranchIndicator>
-							<Square />
-						</TreeView.BranchIndicator> */
-						}
 					</TreeView.BranchControl>
 					<TreeView.BranchContent class="flex gap-3 overflow-hidden data-[state=closed]:animate-[slideUp_200ms] data-[state=open]:animate-[slideDown_200ms]">
 						<TreeView.BranchIndentGuide class="border-l-2 border-background-200 dark:border-background-900 ml-4" />
