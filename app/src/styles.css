@@ -28,4 +28,22 @@
 	--color-background-800: unset;
 	--color-background-900: unset;
 	--color-background-950: unset;
+
+	@keyframes slideDown {
+		from {
+			height: 0;
+		}
+		to {
+			height: var(--height);
+		}
+	}
+
+	@keyframes slideUp {
+		from {
+			height: var(--height);
+		}
+		to {
+			height: 0;
+		}
+	}
 }

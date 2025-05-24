@@ -87,7 +87,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 						</TreeView.BranchIndicator> */
 						}
 					</TreeView.BranchControl>
-					<TreeView.BranchContent class="flex gap-3">
+					<TreeView.BranchContent class="flex gap-3 overflow-hidden data-[state=closed]:animate-[slideUp_200ms] data-[state=open]:animate-[slideDown_200ms]">
 						<TreeView.BranchIndentGuide class="border-l-2 border-background-200 dark:border-background-900 ml-4" />
 						<div class="flex flex-col gap-1 grow">
 							<For each={node.children}>
