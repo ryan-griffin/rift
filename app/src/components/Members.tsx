@@ -1,8 +1,9 @@
 import { Component, For, Suspense } from "solid-js";
 import { createAsync } from "@solidjs/router";
+import { User } from "../entity.d.ts";
 
 const Members: Component = () => {
-	const users = createAsync(async () => {
+	const users = createAsync<User[]>(async () => {
 		const res = await fetch("http://localhost:3000/api/users");
 		return res.json();
 	});
