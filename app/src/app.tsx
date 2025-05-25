@@ -43,7 +43,7 @@ export default function App() {
 			)}
 		>
 			<Route path="/" component={Index} />
-			<Route path="/directory/*path" component={Thread} />
+			<Route path="/directory/:id" component={Thread} />
 		</Router>
 	);
 }
