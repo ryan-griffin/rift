@@ -2,8 +2,11 @@ import { Component } from "solid-js";
 import Directory from "./Directory.tsx";
 import Button from "./Button.tsx";
 import Settings from "../assets/settings.svg";
+import { useNavigate } from "@solidjs/router";
 
 const Nav: Component = () => {
+	const navigate = useNavigate();
+
 	return (
 		<nav class="relative h-full">
 			<Directory />
@@ -12,7 +15,11 @@ const Nav: Component = () => {
 					<div class="w-10 h-10 rounded-full bg-background-100 dark:bg-background-800" />
 					User
 				</div>
-				<Button variant="flat" icon={<Settings />} />
+				<Button
+					variant="flat"
+					icon={<Settings />}
+					onClick={() => navigate("/settings")}
+				/>
 			</div>
 		</nav>
 	);

@@ -9,6 +9,7 @@ import Nav from "./components/Nav.tsx";
 import Index from "./routes/Index.tsx";
 import Members from "./components/Members.tsx";
 import Thread from "./routes/Thread.tsx";
+import Settings from "./routes/Settings.tsx";
 
 export default function App() {
 	onMount(() => {
@@ -44,6 +45,7 @@ export default function App() {
 		>
 			<Route path="/" component={Index} />
 			<Route path="/directory/:id" component={Thread} />
+			<Route path="/settings" component={Settings} />
 		</Router>
 	);
 }
