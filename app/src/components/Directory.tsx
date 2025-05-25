@@ -1,5 +1,5 @@
-import { Component, createResource, For, Show, Suspense } from "solid-js";
-import { A } from "@solidjs/router";
+import { Component, For, Show, Suspense } from "solid-js";
+import { A, createAsync } from "@solidjs/router";
 import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
@@ -99,7 +99,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 };
 
 const Directory = () => {
-	const [nodes] = createResource<Node[]>(async () => {
+	const nodes = createAsync<Node[]>(async () => {
 		const res = await fetch("http://localhost:3000/api/directory/1");
 		return res.json();
 	});

@@ -1,7 +1,8 @@
-import { Component, createResource, For, Show, Suspense } from "solid-js";
+import { Component, For, Suspense } from "solid-js";
+import { createAsync } from "@solidjs/router";
 
 const Members: Component = () => {
-	const [users] = createResource(async () => {
+	const users = createAsync(async () => {
 		const res = await fetch("http://localhost:3000/api/users");
 		return res.json();
 	});
@@ -12,13 +13,9 @@ const Members: Component = () => {
 				Members
 			</p>
 			<Suspense fallback={<p>Loading...</p>}>
-				<Show when={users()}>
-					{(userData) => (
-						<For each={userData()}>
-							{(user) => <p>{user.name}</p>}
-						</For>
-					)}
-				</Show>
+				<For each={users()}>
+					{(user) => <p>{user.name}</p>}
+				</For>
 			</Suspense>
 		</div>
 	);
