@@ -15,7 +15,6 @@ interface DirectoryNode {
 	id: number;
 	name: string;
 	type: "folder" | "thread";
-	path: string;
 	children?: DirectoryNode[];
 }
 
@@ -27,33 +26,24 @@ const buildDirectory = (nodes: Node[]): DirectoryNode | undefined => {
 			id: node.id,
 			name: node.name,
 			type: node.type,
-			path: "",
 		});
 	}
 
 	const root = nodes.find((node) => node.parent_id === null);
 	if (!root) return;
 
-	const buildPaths = (nodeId: number, parentPath: string = "/directory") => {
-		const currentNode = nodeMap.get(nodeId);
-		if (!currentNode) return;
+	for (const node of nodes) {
+		if (node.parent_id !== null) {
+			const parent = nodeMap.get(node.parent_id);
+			const child = nodeMap.get(node.id);
 
-		currentNode.path = parentPath;
-
-		const children = nodes.filter((node) => node.parent_id === nodeId);
-		for (const child of children) {
-			const childNode = nodeMap.get(child.id);
-			if (childNode) {
-				if (!currentNode.children) currentNode.children = [];
-				currentNode.children.push(childNode);
-
-				const childPath = parentPath + "/" + child.name;
-				buildPaths(child.id, childPath);
+			if (parent && child) {
+				if (!parent.children) parent.children = [];
+				parent.children.push(child);
 			}
 		}
-	};
+	}
 
-	buildPaths(root.id);
 	return nodeMap.get(root.id);
 };
 
@@ -70,7 +60,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 				when={node.type === "folder"}
 				fallback={
 					<A
-						href={node.path}
+						href={`directory/${node.id}`}
 						class={nodeClass}
 						inactiveClass="hover:bg-background-200 dark:hover:bg-background-800"
 						activeClass="bg-accent-100 dark:bg-accent-800"
