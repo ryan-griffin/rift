@@ -29,7 +29,7 @@ async fn main() {
 
     let app = Router::new()
         .route("/users", get(get_users))
-        // .route("/users/{username}", get(get_user))
+        .route("/users/{username}", get(get_user))
         .route("/directory/{id}", get(get_directory))
         .route("/thread/{id}", get(get_thread))
         .with_state(conn);
@@ -41,7 +41,7 @@ async fn main() {
     axum::serve(listener, app).await.unwrap();
 }
 
-async fn get_users(State(conn): State<DatabaseConnection>) -> Result<Json<Vec<User>>> {
+async fn get_users(conn: State<DatabaseConnection>) -> Result<Json<Vec<User>>> {
     match db::get_users(&conn).await {
         Ok(users) => Ok(Json(users)),
         Err(err) => {
@@ -51,16 +51,21 @@ async fn get_users(State(conn): State<DatabaseConnection>) -> Result<Json<Vec<Us
     }
 }
 
-// async fn get_user(Path(username): Path<String>) -> Json<Option<User>> {
-//     let user = USERS.iter().find(|user| user.username == username);
-//     Json(user.cloned())
-// }
+async fn get_user(conn: State<DatabaseConnection>, username: Path<String>) -> Result<Json<User>> {
+    match db::get_user(&conn, &username).await {
+        Ok(user) => Ok(Json(user)),
+        Err(err) => {
+            eprintln!("{err}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+        }
+    }
+}
 
 async fn get_directory(
-    State(conn): State<DatabaseConnection>,
-    Path(id): Path<i32>,
+    conn: State<DatabaseConnection>,
+    id: Path<i32>,
 ) -> Result<Json<Vec<Directory>>> {
-    match db::get_directory(&conn, id).await {
+    match db::get_directory(&conn, *id).await {
         Ok(directory) => Ok(Json(directory)),
         Err(err) => {
             eprintln!("{err}");
@@ -69,11 +74,8 @@ async fn get_directory(
     }
 }
 
-async fn get_thread(
-    State(conn): State<DatabaseConnection>,
-    Path(id): Path<i32>,
-) -> Result<Json<Vec<Message>>> {
-    match db::get_thread(&conn, id).await {
+async fn get_thread(conn: State<DatabaseConnection>, id: Path<i32>) -> Result<Json<Vec<Message>>> {
+    match db::get_thread(&conn, *id).await {
         Ok(thread) => Ok(Json(thread)),
         Err(err) => {
             eprintln!("{err}");
