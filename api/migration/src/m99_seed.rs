@@ -91,7 +91,7 @@ impl MigrationTrait for Migration {
                     "bob".into(),
                     2.into(),
                     chrono::Utc::now().into(),
-                    Some(1).into(),
+                    Option::<i32>::None.into(),
                 ],
                 [
                     "hi".into(),
@@ -99,6 +99,27 @@ impl MigrationTrait for Migration {
                     2.into(),
                     chrono::Utc::now().into(),
                     Some(2).into(),
+                ],
+                [
+                    "hello everyone! welcome to the roblox chat 👋".into(),
+                    "bob".into(),
+                    9.into(),
+                    chrono::Utc::now().into(),
+                    Option::<i32>::None.into(),
+                ],
+                [
+                    "yes".into(),
+                    "alice".into(),
+                    9.into(),
+                    chrono::Utc::now().into(),
+                    Option::<i32>::None.into(),
+                ],
+                [
+                    "hello".into(),
+                    "joe".into(),
+                    9.into(),
+                    chrono::Utc::now().into(),
+                    Option::<i32>::None.into(),
                 ],
             ])
             .to_owned();
