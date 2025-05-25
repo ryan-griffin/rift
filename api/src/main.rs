@@ -7,6 +7,7 @@ use axum::{
     routing::get,
 };
 use entity::directory::Model as Directory;
+use entity::messages::Model as Message;
 use entity::users::Model as User;
 use migration::{Migrator, MigratorTrait};
 use sea_orm::{Database, DatabaseConnection};
@@ -25,13 +26,12 @@ async fn main() {
         .expect("Failed to connect to the database");
 
     Migrator::up(&conn, None).await.unwrap();
-    // let migrations = Migrator::get_applied_migrations(&conn).await.unwrap();
-    // assert_eq!(migrations.len(), 2);
 
     let app = Router::new()
         .route("/users", get(get_users))
         // .route("/users/{username}", get(get_user))
         .route("/directory/{id}", get(get_directory))
+        .route("/thread/{id}", get(get_thread))
         .with_state(conn);
 
     let listener = TcpListener::bind(format!("0.0.0.0:{}", api_port))
@@ -61,7 +61,20 @@ async fn get_directory(
     Path(id): Path<i32>,
 ) -> Result<Json<Vec<Directory>>> {
     match db::get_directory(&conn, id).await {
-        Ok(directories) => Ok(Json(directories)),
+        Ok(directory) => Ok(Json(directory)),
+        Err(err) => {
+            eprintln!("{err}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+        }
+    }
+}
+
+async fn get_thread(
+    State(conn): State<DatabaseConnection>,
+    Path(id): Path<i32>,
+) -> Result<Json<Vec<Message>>> {
+    match db::get_thread(&conn, id).await {
+        Ok(thread) => Ok(Json(thread)),
         Err(err) => {
             eprintln!("{err}");
             Err(StatusCode::INTERNAL_SERVER_ERROR.into())

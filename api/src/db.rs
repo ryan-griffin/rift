@@ -1,6 +1,7 @@
 use super::Directory;
+use super::Message;
 use super::User;
-use entity::{directory, users};
+use entity::{directory, messages, users};
 use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter};
 use std::collections::VecDeque;
 
@@ -38,4 +39,11 @@ pub async fn get_directory(db: &DatabaseConnection, id: i32) -> Result<Vec<Direc
     }
 
     Ok(results)
+}
+
+pub async fn get_thread(db: &DatabaseConnection, id: i32) -> Result<Vec<Message>, DbErr> {
+    messages::Entity::find()
+        .filter(messages::Column::DirectoryId.eq(id))
+        .all(db)
+        .await
 }
