@@ -1,14 +1,6 @@
 import { Component, For, Suspense } from "solid-js";
 import { createAsync, useParams } from "@solidjs/router";
-
-interface Message {
-	id: number;
-	content: string;
-	author_username: string;
-	directory_id: number;
-	created_at: string;
-	parent_id: number | null;
-}
+import { Message } from "../entity.d.ts";
 
 const Thread: Component = () => {
 	const params = useParams<{ id: string }>();

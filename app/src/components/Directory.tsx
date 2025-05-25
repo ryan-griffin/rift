@@ -3,23 +3,17 @@ import { A, createAsync } from "@solidjs/router";
 import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
+import { DirectoryNode } from "../entity.d.ts";
 
-interface Node {
+interface TreeNode {
 	id: number;
 	name: string;
 	type: "folder" | "thread";
-	parent_id: number | null;
+	children?: TreeNode[];
 }
 
-interface DirectoryNode {
-	id: number;
-	name: string;
-	type: "folder" | "thread";
-	children?: DirectoryNode[];
-}
-
-const buildDirectory = (nodes: Node[]): DirectoryNode | undefined => {
-	const nodeMap = new Map<number, DirectoryNode>();
+const buildDirectory = (nodes: DirectoryNode[]): TreeNode | undefined => {
+	const nodeMap = new Map<number, TreeNode>();
 
 	for (const node of nodes) {
 		nodeMap.set(node.id, {
@@ -47,7 +41,7 @@ const buildDirectory = (nodes: Node[]): DirectoryNode | undefined => {
 	return nodeMap.get(root.id);
 };
 
-const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
+const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 	props,
 ) => {
 	const { node, indexPath } = props;
@@ -99,7 +93,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<DirectoryNode>> = (
 };
 
 const Directory = () => {
-	const nodes = createAsync<Node[]>(async () => {
+	const nodes = createAsync<DirectoryNode[]>(async () => {
 		const res = await fetch("http://localhost:3000/api/directory/1");
 		return res.json();
 	});
@@ -113,7 +107,7 @@ const Directory = () => {
 
 					return (
 						<TreeView.Root
-							collection={createTreeCollection<DirectoryNode>({
+							collection={createTreeCollection<TreeNode>({
 								nodeToValue: (node) => node.id.toString(),
 								nodeToString: (node) => node.name,
 								rootNode: directory,
