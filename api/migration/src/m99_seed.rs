@@ -1,6 +1,7 @@
-use crate::m20250520_213905_create_users_table::Users;
-use crate::m20250520_213906_create_directory_table::Directory;
-use sea_orm_migration::prelude::*;
+use crate::m1_create_users_table::Users;
+use crate::m2_create_directory_table::Directory;
+use crate::m3_create_messages_table::Messages;
+use sea_orm_migration::{prelude::*, sea_orm::sqlx::types::chrono};
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -67,6 +68,41 @@ impl MigrationTrait for Migration {
             ])
             .to_owned();
         manager.exec_stmt(level3_insert).await?;
+
+        let messages_insert = Query::insert()
+            .into_table(Messages::Table)
+            .columns([
+                Messages::Content,
+                Messages::AuthorUsername,
+                Messages::DirectoryId,
+                Messages::CreatedAt,
+                Messages::ParentId,
+            ])
+            .values_from_panic(vec![
+                [
+                    "hey everyone! welcome to the general chat 👋".into(),
+                    "alice".into(),
+                    2.into(),
+                    chrono::Utc::now().into(),
+                    Option::<i32>::None.into(),
+                ],
+                [
+                    "hello chat".into(),
+                    "bob".into(),
+                    2.into(),
+                    chrono::Utc::now().into(),
+                    Some(1).into(),
+                ],
+                [
+                    "hi".into(),
+                    "bob".into(),
+                    2.into(),
+                    chrono::Utc::now().into(),
+                    Some(2).into(),
+                ],
+            ])
+            .to_owned();
+        manager.exec_stmt(messages_insert).await?;
 
         Ok(())
     }
