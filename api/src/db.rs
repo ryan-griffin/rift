@@ -9,6 +9,17 @@ pub async fn get_users(db: &DatabaseConnection) -> Result<Vec<User>, DbErr> {
     users::Entity::find().all(db).await
 }
 
+pub async fn get_user(db: &DatabaseConnection, username: &str) -> Result<User, DbErr> {
+    users::Entity::find()
+        .filter(users::Column::Username.eq(username))
+        .one(db)
+        .await?
+        .ok_or(DbErr::RecordNotFound(format!(
+            "User with username {} not found",
+            username
+        )))
+}
+
 pub async fn get_directory(db: &DatabaseConnection, id: i32) -> Result<Vec<Directory>, DbErr> {
     let mut results: Vec<Directory> = Vec::new();
     let mut queue: VecDeque<i32> = VecDeque::new();
