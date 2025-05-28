@@ -1,7 +1,7 @@
-use super::Directory;
-use super::Message;
-use super::User;
-use entity::{directory, messages, users};
+use crate::entity::{
+    directory, directory::Model as Directory, messages, messages::Model as Message, users,
+    users::Model as User,
+};
 use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter};
 use std::collections::VecDeque;
 
@@ -15,8 +15,7 @@ pub async fn get_user(db: &DatabaseConnection, username: &str) -> Result<User, D
         .one(db)
         .await?
         .ok_or(DbErr::RecordNotFound(format!(
-            "User with username {} not found",
-            username
+            "User with username {username} not found"
         )))
 }
 
@@ -43,8 +42,7 @@ pub async fn get_directory(db: &DatabaseConnection, id: i32) -> Result<Vec<Direc
         }
         None => {
             return Err(DbErr::RecordNotFound(format!(
-                "Directory with id {} not found",
-                id
+                "Directory with id {id} not found"
             )));
         }
     }

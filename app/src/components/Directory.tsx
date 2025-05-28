@@ -4,6 +4,7 @@ import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
 import { DirectoryNode } from "../entity.d.ts";
+import { useAuth } from "./Auth.tsx";
 
 interface TreeNode {
 	id: number;
@@ -93,8 +94,15 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 };
 
 const Directory = () => {
+	const { token } = useAuth();
+
 	const nodes = createAsync<DirectoryNode[]>(async () => {
-		const res = await fetch("http://localhost:3000/api/directory/1");
+		const res = await fetch("http://localhost:3000/api/directory/1", {
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${token()}`,
+			},
+		});
 		return res.json();
 	});
 
