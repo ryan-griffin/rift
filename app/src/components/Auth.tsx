@@ -5,7 +5,7 @@ import {
 	JSX,
 	useContext,
 } from "solid-js";
-import { User } from "../entity.d.ts";
+import { User } from "../apiUtils.ts";
 import { getCookie, setCookie } from "vinxi/http";
 import { isServer } from "solid-js/web";
 
