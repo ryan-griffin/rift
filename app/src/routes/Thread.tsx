@@ -1,23 +1,12 @@
 import { Component, For, Suspense } from "solid-js";
 import { createAsync, useParams } from "@solidjs/router";
-import { Message } from "../entity.d.ts";
-import { useAuth } from "../components/Auth.tsx";
+import { Message, useApi } from "../apiUtils.ts";
 
 const Thread: Component = () => {
 	const params = useParams<{ id: string }>();
-	const { token } = useAuth();
-	const messages = createAsync<Message[]>(async () => {
-		const res = await fetch(
-			`http://localhost:3000/api/thread/${params.id}`,
-			{
-				headers: {
-					"Content-Type": "application/json",
-					Authorization: `Bearer ${token()}`,
-				},
-			},
-		);
-		return res.json();
-	});
+	const messages = createAsync<Message[]>(() =>
+		useApi(`/thread/${params.id}`)
+	);
 
 	return (
 		<Suspense fallback={<p>Loading...</p>}>
