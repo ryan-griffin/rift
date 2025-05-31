@@ -1,22 +1,15 @@
-import {
-	Component,
-	createContext,
-	createSignal,
-	JSX,
-	useContext,
-} from "solid-js";
-import { User } from "../apiUtils.ts";
-import { getCookie, setCookie } from "vinxi/http";
+import { Component, createContext, JSX, useContext } from "solid-js";
+import { createStore } from "solid-js/store";
 import { isServer } from "solid-js/web";
+import { getCookie, setCookie } from "vinxi/http";
+import { User } from "../apiUtils.ts";
 
 interface AuthState {
 	token: string | null;
 	user: User | null;
 }
 
-interface AuthContextType {
-	token: () => string | null;
-	user: () => User | null;
+interface AuthContextType extends AuthState {
 	login: (username: string) => Promise<boolean>;
 	logout: () => void;
 }
@@ -37,9 +30,7 @@ const getServerAuthCookie = (): AuthState | null => {
 
 const deleteServerAuthCookie = () => {
 	"use server";
-	setCookie("auth", "", {
-		maxAge: -1,
-	});
+	setCookie("auth", "", { maxAge: -1 });
 };
 
 const setAuthCookie = (value: AuthState) => {
@@ -56,14 +47,14 @@ const getAuthCookie = (): AuthState | null => {
 	if (isServer) {
 		return getServerAuthCookie();
 	} else {
-		return document.cookie
-			? JSON.parse(
-				document.cookie.replace(
-					/(?:(?:^|.*;\s*)auth\s*=\s*([^;]*).*$)|^.*$/,
-					"$1",
-				),
-			)
-			: null;
+		const cookies = document.cookie.split(";");
+		const authCookie = cookies.find((cookie) =>
+			cookie.trim().startsWith("auth=")
+		);
+		if (!authCookie) return null;
+
+		const value = authCookie.split("=")[1];
+		return value ? JSON.parse(decodeURIComponent(value)) : null;
 	}
 };
 
@@ -86,17 +77,14 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
-	const [state, setState] = createSignal<AuthState>({
-		token: null,
-		user: null,
-	});
+	const [state, setState] = createStore<AuthState>(
+		getAuthCookie() || { token: null, user: null },
+	);
 
 	const login = async (username: string) => {
 		const res = await fetch("http://localhost:3000/api/login", {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-			},
+			headers: { "Content-Type": "application/json" },
 			body: JSON.stringify({ username }),
 		});
 
@@ -111,22 +99,15 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 	};
 
 	const logout = () => {
-		setState({
-			token: null,
-			user: null,
-		});
+		setState({ token: null, user: null });
 		deleteAuthCookie();
 	};
 
 	const contextValue: AuthContextType = {
-		token: () => state().token,
-		user: () => state().user,
+		...state,
 		login,
 		logout,
 	};
-
-	const storedAuth = getAuthCookie();
-	if (storedAuth) setState(storedAuth);
 
 	return (
 		<AuthContext.Provider value={contextValue}>

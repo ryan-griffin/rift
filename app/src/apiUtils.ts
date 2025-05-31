@@ -24,12 +24,12 @@ export interface Message {
 
 export const useApi = query(async (url: string) => {
 	const { token } = useAuth();
-	if (!token()) throw redirect("/login");
+	if (!token) throw redirect("/login");
 
 	const res = await fetch(`http://localhost:3000/api${url}`, {
 		headers: {
 			"Content-Type": "application/json",
-			Authorization: `Bearer ${token()}`,
+			Authorization: `Bearer ${token}`,
 		},
 	});
 	return res.json();
