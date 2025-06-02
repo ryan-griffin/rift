@@ -3,13 +3,14 @@ mod db;
 mod entity;
 use auth::{Credentials, auth_middleware, authenticate_user, generate_token};
 use axum::{
-    Json, Router,
+    Extension, Json, Router,
     extract::{Path, State},
     http::StatusCode,
     middleware,
     response::Result,
     routing::{get, post},
 };
+use db::CreateMessage;
 use dotenvy::dotenv;
 use entity::{directory::Model as Directory, messages::Model as Message, users::Model as User};
 use migration::{Migrator, MigratorTrait};
@@ -36,6 +37,8 @@ async fn main() {
         .route("/users/{username}", get(get_user))
         .route("/directory/{id}", get(get_directory))
         .route("/thread/{id}", get(get_thread))
+        .route("/message/{id}", get(get_message))
+        .route("/message", post(create_message))
         .route_layer(middleware::from_fn(auth_middleware))
         .route("/login", post(login))
         .with_state(conn);
@@ -89,6 +92,33 @@ async fn get_thread(
 ) -> Result<Json<Vec<Message>>> {
     match db::get_thread(&conn, id).await {
         Ok(thread) => Ok(Json(thread)),
+        Err(err) => {
+            eprintln!("{err}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+        }
+    }
+}
+
+async fn get_message(
+    State(conn): State<DatabaseConnection>,
+    Path(id): Path<i32>,
+) -> Result<Json<Message>> {
+    match db::get_message(&conn, id).await {
+        Ok(message) => Ok(Json(message)),
+        Err(err) => {
+            eprintln!("{err}");
+            Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+        }
+    }
+}
+
+async fn create_message(
+    State(conn): State<DatabaseConnection>,
+    Extension(username): Extension<String>,
+    Json(message): Json<CreateMessage>,
+) -> Result<Json<Message>> {
+    match db::create_message(&conn, username, message).await {
+        Ok(created_message) => Ok(Json(created_message)),
         Err(err) => {
             eprintln!("{err}");
             Err(StatusCode::INTERNAL_SERVER_ERROR.into())

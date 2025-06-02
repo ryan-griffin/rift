@@ -1,9 +1,11 @@
 import { Component, For, Suspense } from "solid-js";
 import { createAsync } from "@solidjs/router";
-import { useApi, User } from "../apiUtils.ts";
+import { useGetApi, User } from "../apiUtils.ts";
+import { useAuth } from "./Auth.tsx";
 
 const Members: Component = () => {
-	const users = createAsync<User[]>(() => useApi("/users"));
+	const { token } = useAuth();
+	const users = createAsync<User[]>(() => useGetApi(token, "/users"));
 
 	return (
 		<div class="w-1/4 flex flex-col p-4 gap-2 rounded-xl bg-background-50 dark:bg-background-900">
