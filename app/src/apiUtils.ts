@@ -1,5 +1,4 @@
-import { useAuth } from "./components/Auth.tsx";
-import { query, redirect } from "@solidjs/router";
+import { action, query, redirect } from "@solidjs/router";
 
 export interface User {
 	username: string;
@@ -13,17 +12,19 @@ export interface DirectoryNode {
 	parent_id: number | null;
 }
 
-export interface Message {
-	id: number;
+export interface CreateMessage {
 	content: string;
-	author_username: string;
 	directory_id: number;
-	created_at: string;
 	parent_id: number | null;
 }
 
-export const useApi = query(async (url: string) => {
-	const { token } = useAuth();
+export interface Message extends CreateMessage {
+	id: number;
+	author_username: string;
+	created_at: string;
+}
+
+export const useGetApi = query(async (token: string | null, url: string) => {
 	if (!token) throw redirect("/login");
 
 	const res = await fetch(`http://localhost:3000/api${url}`, {
@@ -33,4 +34,22 @@ export const useApi = query(async (url: string) => {
 		},
 	});
 	return res.json();
-}, "useApi");
+}, "useGetApi");
+
+export const usePostApi = action(async (
+	token: string | null,
+	url: string,
+	body: unknown,
+) => {
+	if (!token) throw redirect("/login");
+
+	const res = await fetch(`http://localhost:3000/api${url}`, {
+		method: "POST",
+		headers: {
+			"Content-Type": "application/json",
+			Authorization: `Bearer ${token}`,
+		},
+		body: JSON.stringify(body),
+	});
+	return res.json();
+});

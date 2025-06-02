@@ -3,7 +3,8 @@ import { A, createAsync } from "@solidjs/router";
 import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
-import { DirectoryNode, useApi } from "../apiUtils.ts";
+import { DirectoryNode, useGetApi } from "../apiUtils.ts";
+import { useAuth } from "./Auth.tsx";
 
 interface TreeNode {
 	id: number;
@@ -93,7 +94,10 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 };
 
 const Directory = () => {
-	const nodes = createAsync<DirectoryNode[]>(() => useApi("/directory/1"));
+	const { token } = useAuth();
+	const nodes = createAsync<DirectoryNode[]>(() =>
+		useGetApi(token, "/directory/1")
+	);
 
 	return (
 		<Suspense fallback={<p>Loading...</p>}>

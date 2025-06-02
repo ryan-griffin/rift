@@ -2,8 +2,19 @@ use crate::entity::{
     directory, directory::Model as Directory, messages, messages::Model as Message, users,
     users::Model as User,
 };
-use sea_orm::{ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter};
+use chrono::Utc;
+use sea_orm::{
+    ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
+};
+use serde::Deserialize;
 use std::collections::VecDeque;
+
+#[derive(Deserialize)]
+pub struct CreateMessage {
+    pub content: String,
+    pub directory_id: i32,
+    pub parent_id: Option<i32>,
+}
 
 pub async fn get_users(db: &DatabaseConnection) -> Result<Vec<User>, DbErr> {
     users::Entity::find().all(db).await
@@ -55,4 +66,31 @@ pub async fn get_thread(db: &DatabaseConnection, id: i32) -> Result<Vec<Message>
         .filter(messages::Column::DirectoryId.eq(id))
         .all(db)
         .await
+}
+
+pub async fn get_message(db: &DatabaseConnection, id: i32) -> Result<Message, DbErr> {
+    messages::Entity::find()
+        .filter(messages::Column::Id.eq(id))
+        .one(db)
+        .await?
+        .ok_or(DbErr::RecordNotFound(format!(
+            "Message with id {id} not found"
+        )))
+}
+
+pub async fn create_message(
+    db: &DatabaseConnection,
+    author_username: String,
+    message: CreateMessage,
+) -> Result<Message, DbErr> {
+    messages::ActiveModel {
+        author_username: Set(author_username),
+        content: Set(message.content),
+        directory_id: Set(message.directory_id),
+        parent_id: Set(message.parent_id),
+        created_at: Set(Utc::now().into()),
+        ..Default::default()
+    }
+    .insert(db)
+    .await
 }
