@@ -12,7 +12,7 @@ const Nav: Component = () => {
 	return (
 		<nav class="relative h-full">
 			<Directory />
-			<div class="absolute bottom-0 w-full flex p-2 gap-2 items-center justify-between rounded-xl bg-background-50 dark:bg-background-900">
+			<div class="absolute bottom-0 w-full flex p-2 gap-2 items-center justify-between rounded-2xl bg-background-50 dark:bg-background-900">
 				<div class="flex gap-2 items-center">
 					<div class="w-10 h-10 rounded-full bg-background-100 dark:bg-background-800" />
 					{user?.name}

@@ -43,7 +43,7 @@ export default function App() {
 							<Splitter
 								a={<Nav />}
 								b={
-									<main class="h-full p-8 rounded-xl bg-background-50 dark:bg-background-900">
+									<main class="h-full rounded-xl bg-background-50 dark:bg-background-900">
 										{props.children}
 									</main>
 								}

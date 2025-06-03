@@ -2,7 +2,9 @@ import { Component, createSignal, For, Suspense } from "solid-js";
 import { createAsync, useAction, useParams } from "@solidjs/router";
 import { CreateMessage, Message, useGetApi, usePostApi } from "../apiUtils.ts";
 import Button from "../components/Button.tsx";
+import Input from "../components/Input.tsx";
 import { useAuth } from "../components/Auth.tsx";
+import SendHorizontal from "../assets/send-horizontal.svg";
 
 const Thread: Component = () => {
 	const { token } = useAuth();
@@ -33,9 +35,9 @@ const Thread: Component = () => {
 	};
 
 	return (
-		<>
+		<div class="relative h-full">
 			<Suspense fallback={<p>Loading...</p>}>
-				<div class="flex flex-col gap-4">
+				<div class="flex flex-col p-4 pb-22 gap-4 h-full overflow-y-auto">
 					<For each={messages()}>
 						{(message) => (
 							<div class="flex flex-col">
@@ -52,18 +54,27 @@ const Thread: Component = () => {
 					</For>
 				</div>
 			</Suspense>
-			<input
-				placeholder="Message"
-				value={newMessage()}
-				onInput={(e) => setNewMessage(e.currentTarget.value)}
-			/>
-			<Button
-				type="submit"
-				variant="suggested"
-				text="Send"
-				onClick={handleSend}
-			/>
-		</>
+			<div class="absolute bottom-4 left-4 right-4 flex p-2 gap-1 bg-background-100 dark:bg-background-800 rounded-2xl">
+				<Input
+					className="grow"
+					placeholder="Send a message..."
+					value={newMessage()}
+					onInput={setNewMessage}
+					onKeyDown={(e) => {
+						if (e.key === "Enter") {
+							e.preventDefault();
+							handleSend();
+						}
+					}}
+				/>
+				<Button
+					type="submit"
+					variant="suggested"
+					icon={<SendHorizontal />}
+					onClick={handleSend}
+				/>
+			</div>
+		</div>
 	);
 };
 
