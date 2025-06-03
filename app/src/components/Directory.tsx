@@ -108,6 +108,7 @@ const Directory = () => {
 
 					return (
 						<TreeView.Root
+							class="h-full pb-14 overflow-y-auto"
 							collection={createTreeCollection<TreeNode>({
 								nodeToValue: (node) => node.id.toString(),
 								nodeToString: (node) => node.name,
