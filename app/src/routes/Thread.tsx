@@ -5,6 +5,29 @@ import Button from "../components/Button.tsx";
 import Input from "../components/Input.tsx";
 import { useAuth } from "../components/Auth.tsx";
 import SendHorizontal from "../assets/send-horizontal.svg";
+import Avatar from "../components/Avatar.tsx";
+
+const MessageCard: Component<{ message: Message }> = (props) => {
+	return (
+		<div class="flex gap-4">
+			<Avatar
+				fallback={props.message.author_username[0].toUpperCase()}
+				className="h-12"
+			/>
+			<div class="flex flex-col">
+				<div class="flex gap-2 items-center">
+					<p class="text-accent-500 font-medium">
+						{props.message.author_username}
+					</p>
+					<p class="text-sm text-background-400 dark:text-background-500">
+						{new Date(props.message.created_at).toLocaleString()}
+					</p>
+				</div>
+				<p>{props.message.content}</p>
+			</div>
+		</div>
+	);
+};
 
 const Thread: Component = () => {
 	const { token } = useAuth();
@@ -37,24 +60,13 @@ const Thread: Component = () => {
 	return (
 		<div class="relative h-full">
 			<Suspense fallback={<p>Loading...</p>}>
-				<div class="flex flex-col p-4 pb-22 gap-4 h-full overflow-y-auto">
+				<div class="flex flex-col p-4 pb-22 gap-6 h-full overflow-y-auto">
 					<For each={messages()}>
-						{(message) => (
-							<div class="flex flex-col">
-								<div class="flex gap-2">
-									<p>{message.author_username}</p>
-									<p>
-										{new Date(message.created_at)
-											.toLocaleString()}
-									</p>
-								</div>
-								<p>{message.content}</p>
-							</div>
-						)}
+						{(message) => <MessageCard message={message} />}
 					</For>
 				</div>
 			</Suspense>
-			<div class="absolute bottom-4 left-4 right-4 flex p-2 gap-1 bg-background-100 dark:bg-background-800 rounded-2xl">
+			<div class="absolute bottom-4 left-4 right-4 flex p-2 gap-1 bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm">
 				<Input
 					className="grow"
 					placeholder="Send a message..."
