@@ -2,6 +2,16 @@ import { Component, For, Suspense } from "solid-js";
 import { createAsync } from "@solidjs/router";
 import { useGetApi, User } from "../apiUtils.ts";
 import { useAuth } from "./Auth.tsx";
+import Avatar from "./Avatar.tsx";
+
+const UserCard: Component<{ user: User }> = (props) => {
+	return (
+		<div class="flex gap-2 items-center">
+			<Avatar fallback={props.user.name[0]} className="w-10" />
+			{props.user.name}
+		</div>
+	);
+};
 
 const Members: Component = () => {
 	const { token } = useAuth();
@@ -14,7 +24,7 @@ const Members: Component = () => {
 			</p>
 			<Suspense fallback={<p>Loading...</p>}>
 				<For each={users()}>
-					{(user) => <p>{user.name}</p>}
+					{(user) => <UserCard user={user} />}
 				</For>
 			</Suspense>
 		</div>
