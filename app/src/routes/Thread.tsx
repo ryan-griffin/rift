@@ -1,4 +1,4 @@
-import { Component, createSignal, For, Suspense } from "solid-js";
+import { Component, createEffect, createSignal, For, Suspense } from "solid-js";
 import { createAsync, useAction, useParams } from "@solidjs/router";
 import {
 	CreateMessage,
@@ -68,6 +68,14 @@ const Thread: Component = () => {
 		if (result) setNewMessage("");
 	};
 
+	let messagesContainer: HTMLDivElement | undefined;
+	createEffect(() => {
+		const messageList = messages();
+		if (messageList && messagesContainer) {
+			messagesContainer.scrollTop = messagesContainer.scrollHeight;
+		}
+	});
+
 	return (
 		<div class="relative h-full">
 			<header class="flex p-4 gap-2 shadow-sm">
@@ -77,7 +85,10 @@ const Thread: Component = () => {
 				</Suspense>
 			</header>
 			<Suspense fallback={<p>Loading...</p>}>
-				<div class="flex flex-col p-4 pb-38 gap-6 h-full overflow-y-auto">
+				<div
+					class="flex flex-col p-4 pb-38 gap-6 h-full overflow-y-auto"
+					ref={messagesContainer}
+				>
 					<For each={messages()}>
 						{(message) => <MessageCard message={message} />}
 					</For>
