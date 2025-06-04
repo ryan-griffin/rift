@@ -69,6 +69,8 @@ const Thread: Component = () => {
 	};
 
 	let messagesContainer: HTMLDivElement | undefined;
+	const [isScrolledFromTop, setIsScrolledFromTop] = createSignal(false);
+
 	createEffect(() => {
 		const messageList = messages();
 		if (messageList && messagesContainer) {
@@ -76,9 +78,15 @@ const Thread: Component = () => {
 		}
 	});
 
+	const handleScroll = () => {
+		if (messagesContainer) {
+			setIsScrolledFromTop(messagesContainer.scrollTop > 0);
+		}
+	};
+
 	return (
 		<div class="relative h-full">
-			<header class="flex p-4 gap-2 shadow-sm">
+			<header class="flex p-4 gap-2">
 				<MessageSquareText />
 				<Suspense>
 					<p class="font-bold">{thread()?.[0].name}</p>
@@ -87,7 +95,13 @@ const Thread: Component = () => {
 			<Suspense fallback={<p>Loading...</p>}>
 				<div
 					class="flex flex-col p-4 pb-38 gap-6 h-full overflow-y-auto"
+					style={{
+						"mask-image": isScrolledFromTop()
+							? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
+							: "none",
+					}}
 					ref={messagesContainer}
+					onScroll={handleScroll}
 				>
 					<For each={messages()}>
 						{(message) => <MessageCard message={message} />}
