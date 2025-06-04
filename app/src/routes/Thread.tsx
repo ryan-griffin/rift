@@ -1,11 +1,18 @@
 import { Component, createSignal, For, Suspense } from "solid-js";
 import { createAsync, useAction, useParams } from "@solidjs/router";
-import { CreateMessage, Message, useGetApi, usePostApi } from "../apiUtils.ts";
+import {
+	CreateMessage,
+	DirectoryNode,
+	Message,
+	useGetApi,
+	usePostApi,
+} from "../apiUtils.ts";
 import Button from "../components/Button.tsx";
 import Input from "../components/Input.tsx";
 import { useAuth } from "../components/Auth.tsx";
 import SendHorizontal from "../assets/send-horizontal.svg";
 import Avatar from "../components/Avatar.tsx";
+import MessageSquareText from "../assets/message-square-text.svg";
 
 const MessageCard: Component<{ message: Message }> = (props) => {
 	return (
@@ -33,6 +40,10 @@ const Thread: Component = () => {
 	const { token } = useAuth();
 	const params = useParams<{ id: string }>();
 
+	const thread = createAsync<DirectoryNode[]>(() =>
+		useGetApi(token, `/directory/${params.id}`)
+	);
+
 	const messages = createAsync<Message[]>(() =>
 		useGetApi(token, `/thread/${params.id}`)
 	);
@@ -59,8 +70,14 @@ const Thread: Component = () => {
 
 	return (
 		<div class="relative h-full">
+			<header class="flex p-4 gap-2 shadow-sm">
+				<MessageSquareText />
+				<Suspense>
+					<p class="font-bold">{thread()?.[0].name}</p>
+				</Suspense>
+			</header>
 			<Suspense fallback={<p>Loading...</p>}>
-				<div class="flex flex-col p-4 pb-22 gap-6 h-full overflow-y-auto">
+				<div class="flex flex-col p-4 pb-38 gap-6 h-full overflow-y-auto">
 					<For each={messages()}>
 						{(message) => <MessageCard message={message} />}
 					</For>
