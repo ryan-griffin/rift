@@ -94,7 +94,7 @@ const Thread: Component = () => {
 			</header>
 			<Suspense fallback={<p>Loading...</p>}>
 				<div
-					class="flex flex-col p-4 pb-38 gap-6 h-full overflow-y-auto"
+					class="flex flex-col p-4 pb-24 gap-6 h-[calc(100vh-4.5rem)] overflow-y-auto"
 					style={{
 						"mask-image": isScrolledFromTop()
 							? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
