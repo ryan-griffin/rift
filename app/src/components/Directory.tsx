@@ -96,7 +96,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 const Directory = () => {
 	const { token } = useAuth();
 	const nodes = createAsync<DirectoryNode[]>(() =>
-		useGetApi(token, "/directory/1")
+		useGetApi(token!, "/directory/1")
 	);
 
 	return (

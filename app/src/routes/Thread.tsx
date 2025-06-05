@@ -41,11 +41,11 @@ const Thread: Component = () => {
 	const params = useParams<{ id: string }>();
 
 	const thread = createAsync<DirectoryNode[]>(() =>
-		useGetApi(token, `/directory/${params.id}`)
+		useGetApi(token!, `/directory/${params.id}`)
 	);
 
 	const messages = createAsync<Message[]>(() =>
-		useGetApi(token, `/thread/${params.id}`)
+		useGetApi(token!, `/thread/${params.id}`)
 	);
 
 	const createMessage = useAction(usePostApi);
@@ -61,7 +61,7 @@ const Thread: Component = () => {
 		};
 
 		const result: Message = await createMessage(
-			token,
+			token!,
 			"/message",
 			message,
 		);

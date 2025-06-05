@@ -1,10 +1,8 @@
 import { Component } from "solid-js";
 import Button from "../components/Button.tsx";
 import { useAuth } from "../components/Auth.tsx";
-import { useNavigate } from "@solidjs/router";
 
 const Settings: Component = () => {
-	const navigate = useNavigate();
 	const { logout } = useAuth();
 
 	return (
@@ -13,10 +11,7 @@ const Settings: Component = () => {
 			<Button
 				variant="suggested"
 				text="Logout"
-				onClick={() => {
-					logout();
-					navigate("/login");
-				}}
+				onClick={() => logout()}
 			/>
 		</div>
 	);

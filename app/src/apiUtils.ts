@@ -1,4 +1,4 @@
-import { action, query, redirect } from "@solidjs/router";
+import { action, query } from "@solidjs/router";
 
 export interface User {
 	username: string;
@@ -24,9 +24,7 @@ export interface Message extends CreateMessage {
 	created_at: string;
 }
 
-export const useGetApi = query(async (token: string | null, url: string) => {
-	if (!token) throw redirect("/login");
-
+export const useGetApi = query(async (token: string, url: string) => {
 	const res = await fetch(`http://localhost:3000/api${url}`, {
 		headers: {
 			"Content-Type": "application/json",
@@ -37,12 +35,10 @@ export const useGetApi = query(async (token: string | null, url: string) => {
 }, "useGetApi");
 
 export const usePostApi = action(async (
-	token: string | null,
+	token: string,
 	url: string,
 	body: unknown,
 ) => {
-	if (!token) throw redirect("/login");
-
 	const res = await fetch(`http://localhost:3000/api${url}`, {
 		method: "POST",
 		headers: {
