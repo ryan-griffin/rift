@@ -15,7 +15,7 @@ const UserCard: Component<{ user: User }> = (props) => {
 
 const Members: Component = () => {
 	const { token } = useAuth();
-	const users = createAsync<User[]>(() => useGetApi(token, "/users"));
+	const users = createAsync<User[]>(() => useGetApi(token!, "/users"));
 
 	return (
 		<div class="w-1/4 flex flex-col p-4 gap-2 rounded-xl bg-background-50 dark:bg-background-900">

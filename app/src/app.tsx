@@ -12,6 +12,7 @@ import Thread from "./routes/Thread.tsx";
 import Settings from "./routes/Settings.tsx";
 import Login from "./routes/Login.tsx";
 import { AuthProvider } from "./components/Auth.tsx";
+import ProtectedRoute from "./components/ProtectedRoute.tsx";
 
 export default function App() {
 	onMount(() => {
@@ -19,20 +20,20 @@ export default function App() {
 	});
 
 	return (
-		<AuthProvider>
-			<Router
-				root={(props) => (
-					<>
-						<Show when={isTauri()}>
-							<WindowControls />
-						</Show>
-						{props.children}
-					</>
-				)}
-			>
-				<Route path="/login" component={Login} />
-				<Route
-					component={(props) => (
+		<Router
+			root={(props) => (
+				<AuthProvider>
+					<Show when={isTauri()}>
+						<WindowControls />
+					</Show>
+					{props.children}
+				</AuthProvider>
+			)}
+		>
+			<Route path="/login" component={Login} />
+			<Route
+				component={(props) => (
+					<ProtectedRoute>
 						<div
 							class={`flex m-2 gap-2 ${
 								isTauri()
@@ -50,13 +51,13 @@ export default function App() {
 							/>
 							<Members />
 						</div>
-					)}
-				>
-					<Route path="/" component={Index} />
-					<Route path="/directory/:id" component={Thread} />
-					<Route path="/settings" component={Settings} />
-				</Route>
-			</Router>
-		</AuthProvider>
+					</ProtectedRoute>
+				)}
+			>
+				<Route path="/" component={Index} />
+				<Route path="/directory/:id" component={Thread} />
+				<Route path="/settings" component={Settings} />
+			</Route>
+		</Router>
 	);
 }

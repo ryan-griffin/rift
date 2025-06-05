@@ -1,5 +1,10 @@
-import { Component, createContext, JSX, useContext } from "solid-js";
-import { createStore } from "solid-js/store";
+import {
+	Component,
+	createContext,
+	createSignal,
+	JSX,
+	useContext,
+} from "solid-js";
 import { isServer } from "solid-js/web";
 import { getCookie, setCookie } from "vinxi/http";
 import { User } from "../apiUtils.ts";
@@ -77,7 +82,7 @@ export const useAuth = () => {
 };
 
 export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
-	const [state, setState] = createStore<AuthState>(
+	const [state, setState] = createSignal<AuthState>(
 		getAuthCookie() || { token: null, user: null },
 	);
 
@@ -104,7 +109,12 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 	};
 
 	const contextValue: AuthContextType = {
-		...state,
+		get token() {
+			return state().token;
+		},
+		get user() {
+			return state().user;
+		},
 		login,
 		logout,
 	};
