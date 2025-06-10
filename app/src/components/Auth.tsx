@@ -87,11 +87,14 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 	);
 
 	const login = async (username: string) => {
-		const res = await fetch("http://localhost:3000/api/login", {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify({ username }),
-		});
+		const res = await fetch(
+			`http://localhost:${import.meta.env.VITE_PORT}/api/login`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ username }),
+			},
+		);
 
 		if (res.ok) {
 			const data: AuthState = await res.json();
