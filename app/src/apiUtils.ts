@@ -24,8 +24,10 @@ export interface Message extends CreateMessage {
 	created_at: string;
 }
 
+const port = import.meta.env.VITE_PORT;
+
 export const useGetApi = query(async (token: string, url: string) => {
-	const res = await fetch(`http://localhost:3000/api${url}`, {
+	const res = await fetch(`http://localhost:${port}/api${url}`, {
 		headers: {
 			"Content-Type": "application/json",
 			Authorization: `Bearer ${token}`,
@@ -39,7 +41,7 @@ export const usePostApi = action(async (
 	url: string,
 	body: unknown,
 ) => {
-	const res = await fetch(`http://localhost:3000/api${url}`, {
+	const res = await fetch(`http://localhost:${port}/api${url}`, {
 		method: "POST",
 		headers: {
 			"Content-Type": "application/json",

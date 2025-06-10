@@ -3,21 +3,31 @@ mod db;
 mod entity;
 use auth::{Credentials, auth_middleware, authenticate_user, generate_token};
 use axum::{
-    Extension, Json, Router,
+    Extension,
+    Json,
+    Router,
+    // body::Body,
     extract::{Path, State},
     http::StatusCode,
+    // http::{HeaderMap, StatusCode, Uri},
     middleware,
     response::Result,
+    // response::{Response, Result},
     routing::{get, post},
 };
 use db::CreateMessage;
 use dotenvy::dotenv;
 use entity::{directory::Model as Directory, messages::Model as Message, users::Model as User};
 use migration::{Migrator, MigratorTrait};
+// use reqwest::Client;
 use sea_orm::{Database, DatabaseConnection};
 use serde_json::Value;
 use std::env;
+// use std::sync::LazyLock;
 use tokio::net::TcpListener;
+use tower_http::cors::{Any, CorsLayer};
+
+// static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| Client::new());
 
 #[tokio::main]
 async fn main() {
@@ -32,6 +42,11 @@ async fn main() {
 
     Migrator::up(&conn, None).await.unwrap();
 
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any)
+        .allow_headers(Any);
+
     let app = Router::new()
         .route("/users", get(get_users))
         .route("/users/{username}", get(get_user))
@@ -41,6 +56,10 @@ async fn main() {
         .route("/message", post(create_message))
         .route_layer(middleware::from_fn(auth_middleware))
         .route("/login", post(login))
+        // .fallback(get(move |uri: Uri, headers: HeaderMap| {
+        //     proxy(uri, 3000, headers)
+        // }))
+        .layer(cors)
         .with_state(conn);
 
     let listener = TcpListener::bind(format!("0.0.0.0:{api_port}"))
@@ -49,6 +68,46 @@ async fn main() {
     println!("Server running on http://localhost:{api_port}");
     axum::serve(listener, app).await.unwrap();
 }
+
+// async fn proxy(uri: Uri, port: u16, headers: HeaderMap) -> Result<Response<Body>> {
+//     let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
+//     let proxy_url = format!("http://localhost:{}{}", port, path_and_query);
+
+//     let mut request = HTTP_CLIENT.get(&proxy_url);
+
+//     for (key, value) in headers.iter() {
+//         if key != "host" {
+//             if let Ok(header_value) = value.to_str() {
+//                 request = request.header(key.as_str(), header_value);
+//             }
+//         }
+//     }
+
+//     match request.send().await {
+//         Ok(response) => {
+//             let status = response.status();
+//             let response_headers = response.headers().clone();
+//             let body = response.bytes().await.unwrap_or_default();
+
+//             let mut builder = Response::builder().status(status.as_u16());
+
+//             for (key, value) in response_headers.iter() {
+//                 if key != "content-length" && key != "transfer-encoding" {
+//                     builder = builder.header(key, value);
+//                 }
+//             }
+
+//             Ok(builder.body(Body::from(body)).unwrap())
+//         }
+//         Err(e) => {
+//             eprintln!("Proxy error for {}: {}", proxy_url, e);
+//             Ok(Response::builder()
+//                 .status(StatusCode::BAD_GATEWAY)
+//                 .body(Body::from("Solid Start server unavailable"))
+//                 .unwrap())
+//         }
+//     }
+// }
 
 async fn get_users(State(conn): State<DatabaseConnection>) -> Result<Json<Vec<User>>> {
     match db::get_users(&conn).await {

@@ -3,7 +3,9 @@
 	"workspace": ["app", "api"],
 	"tasks": {
 		"api": "deno task --cwd=api",
-		"app": "deno task api dev & deno task --cwd=app"
+		"app": "deno task --cwd=app",
+		"dev-web": "deno task api dev & deno task app dev",
+		"dev-desktop": "deno task api dev & deno task app tauri dev"
 	},
 	"fmt": {
 		"useTabs": true,

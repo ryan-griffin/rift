@@ -1,4 +1,5 @@
 {
+	"type": "module",
 	"dependencies": {
 		"@ark-ui/solid": "^5.9.1",
 		"@solidjs/router": "^0.15.3",
