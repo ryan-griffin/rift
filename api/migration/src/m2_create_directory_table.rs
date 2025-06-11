@@ -5,40 +5,40 @@ pub struct Migration;
 
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
-    async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .create_table(
-                Table::create()
-                    .table(Directory::Table)
-                    .if_not_exists()
-                    .col(pk_auto(Directory::Id))
-                    .col(string(Directory::Name))
-                    .col(string(Directory::Type))
-                    .col(integer_null(Directory::ParentId))
-                    .foreign_key(
-                        ForeignKey::create()
-                            .from(Directory::Table, Directory::ParentId)
-                            .to(Directory::Table, Directory::Id)
-                            .on_delete(ForeignKeyAction::SetNull)
-                            .on_update(ForeignKeyAction::Cascade),
-                    )
-                    .to_owned(),
-            )
-            .await
-    }
+	async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+		manager
+			.create_table(
+				Table::create()
+					.table(Directory::Table)
+					.if_not_exists()
+					.col(pk_auto(Directory::Id))
+					.col(string(Directory::Name))
+					.col(string(Directory::Type))
+					.col(integer_null(Directory::ParentId))
+					.foreign_key(
+						ForeignKey::create()
+							.from(Directory::Table, Directory::ParentId)
+							.to(Directory::Table, Directory::Id)
+							.on_delete(ForeignKeyAction::SetNull)
+							.on_update(ForeignKeyAction::Cascade),
+					)
+					.to_owned(),
+			)
+			.await
+	}
 
-    async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-        manager
-            .drop_table(Table::drop().table(Directory::Table).to_owned())
-            .await
-    }
+	async fn down(&self, manager: &SchemaManager) -> Result<(), DbErr> {
+		manager
+			.drop_table(Table::drop().table(Directory::Table).to_owned())
+			.await
+	}
 }
 
 #[derive(DeriveIden)]
 pub enum Directory {
-    Table,
-    Id,
-    Name,
-    Type,
-    ParentId,
+	Table,
+	Id,
+	Name,
+	Type,
+	ParentId,
 }
