@@ -1,10 +1,8 @@
 node_modules/
 target/
 **/gen/schemas/
-.wrangler
-.output
-.vercel
-.netlify
-.vinxi
+.vinxi/
+.output/
+.output-tauri/
 app.config.timestamp_*.js
 .env

@@ -1,4 +1,5 @@
 {
+	"nodeModulesDir": "auto",
 	"tasks": {
 		"dev": "vinxi dev",
 		"build": "vinxi build",
@@ -9,5 +10,8 @@
 		"jsx": "react-jsx",
 		"jsxImportSource": "solid-js",
 		"lib": ["DOM", "DOM.Iterable", "ESNext"]
+	},
+	"fmt": {
+		"useTabs": true
 	}
 }

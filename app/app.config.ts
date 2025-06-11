@@ -35,5 +35,8 @@ export default defineConfig({
 				proxy: `http://localhost:${apiPort}/**`,
 			},
 		},
+		output: {
+			dir: isTauri ? ".output-tauri" : ".output",
+		},
 	},
 });
