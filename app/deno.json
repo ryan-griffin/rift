@@ -3,7 +3,7 @@
 	"tasks": {
 		"dev": "vinxi dev",
 		"build": "vinxi build",
-		"start": "vinxi start",
+		"start": "deno run --allow-env --allow-read --allow-net --env-file npm:vinxi start",
 		"tauri": "tauri"
 	},
 	"compilerOptions": {
