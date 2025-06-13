@@ -88,7 +88,7 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 
 	const login = async (username: string) => {
 		const res = await fetch(
-			`http://localhost:${import.meta.env.VITE_PORT}/api/login`,
+			`http://${import.meta.env.VITE_ADDRESS}/api/login`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },

@@ -7,6 +7,8 @@ import solidSvg from "vite-plugin-solid-svg";
 
 config({ path: resolve("../.env") });
 
+process.env.VITE_ADDRESS = `${process.env.HOST}:${process.env.PORT}`;
+
 const apiPort = +process.env.API_PORT!;
 const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined;
 
