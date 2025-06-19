@@ -1,7 +1,7 @@
 use crate::db;
 use crate::entity;
 use axum::{
-	extract::Request,
+	extract::{Query, Request},
 	http::{HeaderMap, StatusCode},
 	middleware::Next,
 	response::Response,
@@ -12,7 +12,7 @@ use jsonwebtoken::{
 };
 use sea_orm::{DatabaseConnection, DbErr};
 use serde::{Deserialize, Serialize};
-use std::env;
+use std::{collections::HashMap, env};
 
 #[derive(Serialize, Deserialize)]
 struct Claims {
@@ -74,6 +74,10 @@ fn extract_token_from_header(headers: &HeaderMap) -> Option<String> {
 		.map(|token| token.to_string())
 }
 
+fn extract_token_from_query(query: &HashMap<String, String>) -> Option<String> {
+	query.get("token").cloned()
+}
+
 pub async fn authenticate_user(
 	db: &DatabaseConnection,
 	credentials: &Credentials,
@@ -88,10 +92,14 @@ pub async fn authenticate_user(
 
 pub async fn auth_middleware(
 	headers: HeaderMap,
+	Query(query): Query<HashMap<String, String>>,
 	mut request: Request,
 	next: Next,
 ) -> Result<Response, StatusCode> {
-	let token = extract_token_from_header(&headers).ok_or(StatusCode::UNAUTHORIZED)?;
+	let token = extract_token_from_header(&headers)
+		.or_else(|| extract_token_from_query(&query))
+		.ok_or(StatusCode::UNAUTHORIZED)?;
+
 	let claims = validate_token(&token).map_err(|_| StatusCode::UNAUTHORIZED)?;
 
 	// Add the username to request extensions so handlers can access it
