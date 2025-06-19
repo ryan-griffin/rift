@@ -2,39 +2,56 @@ mod auth;
 mod db;
 mod entity;
 mod routes;
+mod websocket;
 use auth::auth_middleware;
 use axum::{
 	Router,
-	// body::Body,
-	// http::{HeaderMap, StatusCode, Uri},
+	body::Body,
+	http::{HeaderMap, StatusCode, Uri},
 	middleware,
-	// response::{Response, Result},
+	response::{Response, Result},
 	routing::{get, post},
 };
 use dotenvy::dotenv;
 use migration::{Migrator, MigratorTrait};
+use reqwest::Client;
 use routes::*;
-// use reqwest::Client;
-use sea_orm::Database;
-use std::env;
-// use std::sync::LazyLock;
-use tokio::net::TcpListener;
+use sea_orm::{Database, DatabaseConnection};
+use std::sync::LazyLock;
+use std::{
+	env,
+	{collections::HashMap, sync::Arc},
+};
+use tokio::{net::TcpListener, sync::Mutex};
 use tower_http::cors::{Any, CorsLayer};
+use websocket::WsState;
 
-// static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| Client::new());
+#[derive(Clone)]
+pub struct AppState {
+	pub conn: DatabaseConnection,
+	pub ws_state: WsState,
+}
+
+static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| Client::new());
 
 #[tokio::main]
 async fn main() {
 	dotenv().expect("Failed to load .env file");
 
 	let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+	let api_host = env::var("API_HOST").expect("API_HOST must be set");
 	let api_port = env::var("API_PORT").expect("API_PORT must be set");
+	let port = env::var("PORT")
+		.expect("PORT must be set")
+		.parse::<u16>()
+		.unwrap();
 
 	let conn = Database::connect(&database_url)
 		.await
 		.expect("Failed to connect to the database");
-
 	Migrator::up(&conn, None).await.unwrap();
+
+	let ws_state: WsState = Arc::new(Mutex::new(HashMap::new()));
 
 	let cors = CorsLayer::new()
 		.allow_origin(Any)
@@ -42,63 +59,61 @@ async fn main() {
 		.allow_headers(Any);
 
 	let app = Router::new()
-		.route("/users", get(get_users))
-		.route("/users/{username}", get(get_user))
-		.route("/directory/{id}", get(get_directory))
-		.route("/thread/{id}", get(get_thread))
-		.route("/message/{id}", get(get_message))
-		.route("/message", post(create_message))
+		.route("/api/users", get(get_users))
+		.route("/api/users/{username}", get(get_user))
+		.route("/api/directory/{id}", get(get_directory))
+		.route("/api/thread/{id}", get(get_thread))
+		.route("/api/message/{id}", get(get_message))
+		.route("/api/message", post(create_message))
+		.route("/api/ws", get(ws_handler))
 		.route_layer(middleware::from_fn(auth_middleware))
-		.route("/login", post(login))
-		// .fallback(get(move |uri: Uri, headers: HeaderMap| {
-		//     proxy(uri, 3000, headers)
-		// }))
+		.route("/api/login", post(login))
+		.fallback(get(move |uri: Uri, headers: HeaderMap| {
+			proxy(uri, port, headers)
+		}))
 		.layer(cors)
-		.with_state(conn);
+		.with_state(AppState { conn, ws_state });
 
-	let listener = TcpListener::bind(format!("0.0.0.0:{api_port}"))
+	let listener = TcpListener::bind(format!("{api_host}:{api_port}"))
 		.await
 		.unwrap();
-	println!("Server running on http://localhost:{api_port}");
+	println!("Server running on http://{api_host}:{api_port}");
 	axum::serve(listener, app).await.unwrap();
 }
 
-// async fn proxy(uri: Uri, port: u16, headers: HeaderMap) -> Result<Response<Body>> {
-//     let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-//     let proxy_url = format!("http://localhost:{}{}", port, path_and_query);
+async fn proxy(uri: Uri, port: u16, headers: HeaderMap) -> Result<Response> {
+	let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
+	let proxy_url = format!("http://localhost:{port}{path_and_query}");
 
-//     let mut request = HTTP_CLIENT.get(&proxy_url);
+	let mut request = HTTP_CLIENT.get(&proxy_url);
 
-//     for (key, value) in headers.iter() {
-//         if key != "host" {
-//             if let Ok(header_value) = value.to_str() {
-//                 request = request.header(key.as_str(), header_value);
-//             }
-//         }
-//     }
+	for (key, value) in headers.iter() {
+		if key != "host" {
+			if let Ok(header_value) = value.to_str() {
+				request = request.header(key.as_str(), header_value);
+			}
+		}
+	}
 
-//     match request.send().await {
-//         Ok(response) => {
-//             let status = response.status();
-//             let response_headers = response.headers().clone();
-//             let body = response.bytes().await.unwrap_or_default();
+	match request.send().await {
+		Ok(response) => {
+			let status = response.status();
+			let response_headers = response.headers().clone();
+			let body = response.bytes().await.unwrap_or_default();
 
-//             let mut builder = Response::builder().status(status.as_u16());
+			let mut builder = Response::builder().status(status.as_u16());
 
-//             for (key, value) in response_headers.iter() {
-//                 if key != "content-length" && key != "transfer-encoding" {
-//                     builder = builder.header(key, value);
-//                 }
-//             }
+			for (key, value) in response_headers.iter() {
+				if key != "content-length" && key != "transfer-encoding" {
+					builder = builder.header(key, value);
+				}
+			}
 
-//             Ok(builder.body(Body::from(body)).unwrap())
-//         }
-//         Err(e) => {
-//             eprintln!("Proxy error for {}: {}", proxy_url, e);
-//             Ok(Response::builder()
-//                 .status(StatusCode::BAD_GATEWAY)
-//                 .body(Body::from("Solid Start server unavailable"))
-//                 .unwrap())
-//         }
-//     }
-// }
+			Ok(builder.body(Body::from(body)).unwrap())
+		}
+		Err(e) => {
+			eprintln!("Proxy error for {}: {}", proxy_url, e);
+			Err(StatusCode::BAD_GATEWAY.into())
+		}
+	}
+}

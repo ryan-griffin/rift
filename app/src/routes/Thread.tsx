@@ -1,11 +1,20 @@
-import { Component, createEffect, createSignal, For, Suspense } from "solid-js";
-import { createAsync, useAction, useParams } from "@solidjs/router";
+import {
+	Component,
+	createEffect,
+	createSignal,
+	For,
+	onCleanup,
+	onMount,
+	Suspense,
+} from "solid-js";
+import { createAsync, useParams } from "@solidjs/router";
 import {
 	CreateMessage,
 	DirectoryNode,
 	Message,
 	useGetApi,
-	usePostApi,
+	useWebSocket,
+	WsMessage,
 } from "../apiUtils.ts";
 import Button from "../components/Button.tsx";
 import Input from "../components/Input.tsx";
@@ -37,22 +46,71 @@ const MessageCard: Component<{ message: Message }> = (props) => {
 };
 
 const Thread: Component = () => {
-	const { token } = useAuth();
 	const params = useParams<{ id: string }>();
+	const { token } = useAuth();
+	const { isConnected, connect, disconnect, sendMessage } = useWebSocket(
+		token!,
+	);
 
 	const thread = createAsync<DirectoryNode[]>(() =>
 		useGetApi(token!, `/directory/${params.id}`)
 	);
 
-	const messages = createAsync<Message[]>(() =>
+	const initialMessages = createAsync<Message[]>(() =>
 		useGetApi(token!, `/thread/${params.id}`)
 	);
+	const [messages, setMessages] = createSignal<Message[]>([]);
+	const allMessages = () => [...(initialMessages() || []), ...messages()];
 
-	const createMessage = useAction(usePostApi);
+	onMount(() => {
+		const ws = connect();
+
+		ws.onmessage = (event) => {
+			const message: WsMessage = JSON.parse(event.data);
+
+			switch (message.type) {
+				case "message_created": {
+					const { type: _type, ...messageData } = message;
+					setMessages((prev) => [...prev, messageData]);
+					break;
+				}
+				case "error":
+					console.error("WebSocket error:", message.message);
+					break;
+			}
+		};
+	});
+
+	createEffect((prevId: number | undefined) => {
+		const id = Number(params.id);
+
+		if (prevId && prevId !== id) {
+			sendMessage({
+				type: "leave_thread",
+				thread_id: prevId,
+			});
+			setMessages([]);
+		}
+
+		sendMessage({
+			type: "join_thread",
+			thread_id: id,
+		});
+
+		return id;
+	});
+
+	onCleanup(() => {
+		sendMessage({
+			type: "leave_thread",
+			thread_id: Number(params.id),
+		});
+		disconnect();
+	});
 
 	const [newMessage, setNewMessage] = createSignal("");
-	const handleSend = async () => {
-		if (!newMessage()) return;
+	const handleSend = () => {
+		if (!newMessage() || !isConnected()) return;
 
 		const message: CreateMessage = {
 			content: newMessage(),
@@ -60,24 +118,23 @@ const Thread: Component = () => {
 			parent_id: null,
 		};
 
-		const result: Message = await createMessage(
-			token!,
-			"/message",
-			message,
-		);
-		if (result) setNewMessage("");
+		sendMessage({
+			type: "create_message",
+			...message,
+		});
+
+		setNewMessage("");
 	};
 
 	let messagesContainer: HTMLDivElement | undefined;
-	const [isScrolledFromTop, setIsScrolledFromTop] = createSignal(false);
 
 	createEffect(() => {
-		const messageList = messages();
-		if (messageList && messagesContainer) {
+		if (allMessages().length > 0 && messagesContainer) {
 			messagesContainer.scrollTop = messagesContainer.scrollHeight;
 		}
 	});
 
+	const [isScrolledFromTop, setIsScrolledFromTop] = createSignal(false);
 	const handleScroll = () => {
 		if (messagesContainer) {
 			setIsScrolledFromTop(messagesContainer.scrollTop > 0);
@@ -103,7 +160,7 @@ const Thread: Component = () => {
 					ref={messagesContainer}
 					onScroll={handleScroll}
 				>
-					<For each={messages()}>
+					<For each={allMessages()}>
 						{(message) => <MessageCard message={message} />}
 					</For>
 				</div>

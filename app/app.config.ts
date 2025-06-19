@@ -7,9 +7,8 @@ import solidSvg from "vite-plugin-solid-svg";
 
 config({ path: resolve("../.env") });
 
-process.env.VITE_ADDRESS = `${process.env.HOST}:${process.env.PORT}`;
+process.env.VITE_ADDRESS = `${process.env.API_HOST}:${process.env.API_PORT}`;
 
-const apiPort = +process.env.API_PORT!;
 const isTauri = process.env.TAURI_ENV_PLATFORM !== undefined;
 
 export default defineConfig({
@@ -18,13 +17,6 @@ export default defineConfig({
 		plugins: [tailwindcss(), solidSvg()],
 		clearScreen: false,
 		server: {
-			proxy: {
-				"/api": {
-					target: `http://localhost:${apiPort}`,
-					changeOrigin: true,
-					rewrite: (path: string) => path.replace(/^\/api/, ""),
-				},
-			},
 			watch: {
 				ignored: ["**/src-tauri/**"],
 			},
@@ -32,11 +24,6 @@ export default defineConfig({
 	},
 	server: {
 		preset: "deno_server",
-		routeRules: {
-			"/api/**": {
-				proxy: `http://localhost:${apiPort}/**`,
-			},
-		},
 		output: {
 			dir: isTauri ? ".output-tauri" : ".output",
 		},

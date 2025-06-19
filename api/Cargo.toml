@@ -6,7 +6,7 @@ edition = "2024"
 [dependencies]
 migration = { path = "migration" }
 tokio = { version = "1.45.1", features = ["full"] }
-axum = "0.8.4"
+axum = { version = "0.8.4", features = ["ws"] }
 sea-orm = { version = "1.1.12", features = [
 	"sqlx-postgres",
 	"runtime-tokio-native-tls",
@@ -18,6 +18,7 @@ serde_json = "1.0.140"
 jsonwebtoken = "9.3.1"
 chrono = "0.4.41"
 tower-http = { version = "0.6.6", features = ["cors"] }
-# reqwest = { version = "0.12.19", default-features = false, features = [
-# 	"rustls-tls",
-# ] }
+futures-util = "0.3.31"
+reqwest = { version = "0.12.19", default-features = false, features = [
+	"native-tls",
+] }
