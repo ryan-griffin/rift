@@ -1,7 +1,8 @@
-use crate::auth;
+use crate::auth::{AuthResponse, Credentials, authenticate_user, generate_token};
 use crate::db;
-use crate::entity;
-use auth::{Credentials, authenticate_user, generate_token};
+use crate::entity::{
+	directory::Model as Directory, messages::Model as Message, users::Model as User,
+};
 use axum::{
 	Extension, Json,
 	extract::{Path, State},
@@ -9,9 +10,7 @@ use axum::{
 	response::Result,
 };
 use db::CreateMessage;
-use entity::{directory::Model as Directory, messages::Model as Message, users::Model as User};
 use sea_orm::DatabaseConnection;
-use serde_json::Value;
 
 pub async fn get_users(State(conn): State<DatabaseConnection>) -> Result<Json<Vec<User>>> {
 	match db::get_users(&conn).await {
@@ -92,7 +91,7 @@ pub async fn create_message(
 pub async fn login(
 	State(conn): State<DatabaseConnection>,
 	Json(credentials): Json<Credentials>,
-) -> Result<Json<Value>> {
+) -> Result<Json<AuthResponse>> {
 	let user = match authenticate_user(&conn, &credentials).await {
 		Ok(Some(user)) => user,
 		Ok(None) => return Err(StatusCode::UNAUTHORIZED.into()),
@@ -110,8 +109,5 @@ pub async fn login(
 		}
 	};
 
-	Ok(Json(serde_json::json!({
-		"user": user,
-		"token": token
-	})))
+	Ok(Json(AuthResponse { user, token }))
 }
