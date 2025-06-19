@@ -6,10 +6,10 @@ use chrono::Utc;
 use sea_orm::{
 	ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
 };
-use serde::Deserialize;
+use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
 
-#[derive(Deserialize)]
+#[derive(Serialize, Deserialize, Clone)]
 pub struct CreateMessage {
 	pub content: String,
 	pub directory_id: i32,
