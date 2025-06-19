@@ -27,6 +27,12 @@ pub struct Credentials {
 	// pub password: String,
 }
 
+#[derive(Serialize)]
+pub struct AuthResponse {
+	pub user: User,
+	pub token: String,
+}
+
 pub fn generate_token(username: &str) -> Result<String, Error> {
 	let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
