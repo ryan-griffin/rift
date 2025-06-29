@@ -1,10 +1,11 @@
-import { Component } from "solid-js";
+import { Component, JSX } from "solid-js";
 import { Field } from "@ark-ui/solid/field";
 
 interface Props {
 	placeholder?: string;
+	type?: "text" | "password";
 	value?: string;
-	onInput?: (value: string) => void;
+	onInput?: JSX.InputEventHandlerUnion<HTMLInputElement, InputEvent>;
 	onKeyDown?: (e: KeyboardEvent) => void;
 	className?: string;
 }
@@ -17,8 +18,9 @@ const Input: Component<Props> = (props) => {
 		<Field.Root class={props.className}>
 			<Field.Input
 				placeholder={props.placeholder}
+				type={props.type}
 				value={props.value}
-				onInput={(e) => props.onInput?.(e.currentTarget.value)}
+				onInput={props.onInput}
 				onKeyDown={props.onKeyDown}
 				class={style}
 			/>
