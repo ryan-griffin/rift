@@ -68,6 +68,7 @@ async fn main() {
 		.route("/api/ws", get(ws_handler))
 		.route_layer(middleware::from_fn(auth_middleware))
 		.route("/api/login", post(login))
+		.route("/api/signup", post(signup))
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
 			proxy(uri, port, headers)
 		}))

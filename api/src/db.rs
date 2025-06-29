@@ -30,6 +30,15 @@ pub async fn get_user(db: &DatabaseConnection, username: &str) -> Result<User, D
 		)))
 }
 
+pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, DbErr> {
+	users::ActiveModel {
+		username: Set(user.username),
+		name: Set(user.name),
+	}
+	.insert(db)
+	.await
+}
+
 pub async fn get_directory(db: &DatabaseConnection, id: i32) -> Result<Vec<Directory>, DbErr> {
 	let mut results: Vec<Directory> = Vec::new();
 	let mut queue: VecDeque<i32> = VecDeque::new();
