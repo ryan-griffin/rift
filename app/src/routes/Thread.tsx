@@ -170,7 +170,7 @@ const Thread: Component = () => {
 					className="grow"
 					placeholder="Send a message..."
 					value={newMessage()}
-					onInput={setNewMessage}
+					onInput={(e) => setNewMessage(e.currentTarget.value)}
 					onKeyDown={(e) => {
 						if (e.key === "Enter") {
 							e.preventDefault();
