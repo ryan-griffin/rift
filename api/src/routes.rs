@@ -113,6 +113,32 @@ pub async fn login(
 	Ok(Json(AuthResponse { user, token }))
 }
 
+pub async fn signup(
+	State(app_state): State<AppState>,
+	Json(user): Json<User>,
+) -> Result<Json<AuthResponse>> {
+	let created_user = match db::create_user(&app_state.conn, user).await {
+		Ok(created_user) => created_user,
+		Err(err) => {
+			eprintln!("{err}");
+			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
+		}
+	};
+
+	let token = match generate_token(&created_user.username) {
+		Ok(token) => token,
+		Err(err) => {
+			eprintln!("{err}");
+			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
+		}
+	};
+
+	Ok(Json(AuthResponse {
+		user: created_user,
+		token,
+	}))
+}
+
 pub async fn ws_handler(
 	ws: WebSocketUpgrade,
 	State(app_state): State<AppState>,
