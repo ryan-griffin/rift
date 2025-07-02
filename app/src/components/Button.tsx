@@ -1,4 +1,4 @@
-import { Component, JSX } from "solid-js";
+import { Component, JSX, Show } from "solid-js";
 
 interface Props {
 	type?: "button" | "submit" | "reset";
@@ -12,17 +12,9 @@ interface Props {
 	className?: string;
 }
 
-const Button: Component<Props> = ({
-	type,
-	variant,
-	rounded,
-	icon,
-	text,
-	title,
-	disabled,
-	onClick,
-	className,
-}) => {
+const Button: Component<Props> = (props) => {
+	const { icon } = props;
+
 	const variantStyles = {
 		regular:
 			"bg-background-100 hover:bg-background-200 active:bg-background-300 dark:bg-background-800 dark:hover:bg-background-700 dark:active:bg-background-600",
@@ -34,32 +26,43 @@ const Button: Component<Props> = ({
 			"text-red-400 bg-red-400/20 hover:bg-red-400/30 active:bg-red-400/40",
 	};
 
-	const contentStyles = (() => {
-		if (icon && text) {
+	const contentStyles = () => {
+		if (icon && props.text) {
 			return `flex gap-2 items-center justify-center ${
-				rounded ? "pl-4 pr-5 py-3" : "pl-2 pr-3 py-2"
+				props.rounded ? "pl-4 pr-5 py-3" : "pl-2 pr-3 py-2"
 			}`;
 		}
 
-		if (icon && !text) return "flex items-center justify-center p-2";
+		if (icon && !props.text) {
+			return "flex items-center justify-center p-2";
+		}
 
-		return rounded ? "px-5 py-3" : "px-3 py-2";
-	})();
+		return props.rounded ? "px-5 py-3" : "px-3 py-2";
+	};
+
+	const buttonClass = () => {
+		const classes = [
+			"cursor-pointer transition-colors duration-200",
+			props.text ? "font-bold" : "",
+			props.rounded ? "rounded-full" : "rounded-lg",
+			contentStyles(),
+			variantStyles[props.variant],
+			props.className || "",
+		];
+
+		return classes.filter(Boolean).join(" ");
+	};
 
 	return (
 		<button
-			class={`cursor-pointer transition-colors duration-200 ${
-				text && "font-bold"
-			} ${rounded ? "rounded-full" : "rounded-lg"} ${contentStyles} ${
-				variantStyles[variant]
-			} ${className}`}
-			type={type}
-			title={title}
-			disabled={disabled}
-			onClick={onClick}
+			class={buttonClass()}
+			type={props.type}
+			title={props.title}
+			disabled={props.disabled}
+			onClick={props.onClick}
 		>
-			{icon && <span>{icon}</span>}
-			{text && <span>{text}</span>}
+			<Show when={icon}>{icon}</Show>
+			<Show when={props.text}>{props.text}</Show>
 		</button>
 	);
 };
