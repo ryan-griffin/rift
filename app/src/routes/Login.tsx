@@ -1,22 +1,36 @@
-import { Component } from "solid-js";
+import { Component, createSignal } from "solid-js";
 import { createStore } from "solid-js/store";
 import { useNavigate } from "@solidjs/router";
 import { useAuth } from "../components/Auth.tsx";
 import Button from "../components/Button.tsx";
 import Input from "../components/Input.tsx";
+import SegmentGroup from "../components/SegmentGroup.tsx";
 
 const Login: Component = () => {
 	const navigate = useNavigate();
-	const { login } = useAuth();
+	const { login, signup } = useAuth();
+
+	const [segment, setSegment] = createSignal<"Login" | "Sign Up">("Login");
 
 	const [state, setState] = createStore({ username: "", password: "" });
 
 	const handleSubmit = async (e: Event) => {
 		e.preventDefault();
-		if (state.username && await login(state.username)) {
-			navigate("/");
-		} else {
-			alert("Login failed. Please try again.");
+		switch (segment()) {
+			case "Login":
+				if (state.username && await login(state.username)) {
+					navigate("/");
+				} else {
+					alert("Login failed. Please try again.");
+				}
+				break;
+			case "Sign Up":
+				if (state.username && await signup(state.username)) {
+					navigate("/");
+				} else {
+					alert("Sign up failed. Please try again.");
+				}
+				break;
 		}
 	};
 
@@ -26,6 +40,11 @@ const Login: Component = () => {
 				onSubmit={handleSubmit}
 				class="flex flex-col p-8 gap-4 rounded-2xl bg-background-50 dark:bg-background-900"
 			>
+				<SegmentGroup
+					value={segment()}
+					setValue={setSegment}
+					items={["Login", "Sign Up"]}
+				/>
 				<Input
 					placeholder="Username"
 					value={state.username}
@@ -37,7 +56,7 @@ const Login: Component = () => {
 					value={state.password}
 					onInput={(e) => setState("password", e.currentTarget.value)}
 				/>
-				<Button type="submit" variant="suggested" text="Login" />
+				<Button type="submit" variant="suggested" text={segment()} />
 			</form>
 		</main>
 	);
