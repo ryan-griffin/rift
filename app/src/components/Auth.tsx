@@ -16,6 +16,7 @@ interface AuthState {
 
 interface AuthContextType extends AuthState {
 	login: (username: string) => Promise<boolean>;
+	signup: (username: string) => Promise<boolean>;
 	logout: () => void;
 }
 
@@ -106,6 +107,26 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		return false;
 	};
 
+	const signup = async (username: string) => {
+		const res = await fetch(
+			`http://${import.meta.env.VITE_ADDRESS}/api/signup`,
+			{
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({ username, name: username }),
+			},
+		);
+
+		if (res.ok) {
+			const data: AuthState = await res.json();
+			setState(data);
+			setAuthCookie(data);
+			return true;
+		}
+
+		return false;
+	};
+
 	const logout = () => {
 		setState({ token: null, user: null });
 		deleteAuthCookie();
@@ -119,6 +140,7 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 			return state().user;
 		},
 		login,
+		signup,
 		logout,
 	};
 
