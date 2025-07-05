@@ -7,8 +7,8 @@ import Avatar from "./Avatar.tsx";
 const UserCard: Component<{ user: User }> = (props) => {
 	return (
 		<div class="flex gap-2 items-center">
-			<Avatar fallback={props.user.name[0]} className="w-10" />
-			{props.user.name}
+			<Avatar fallback={props.user.username[0]} className="w-10" />
+			{props.user.username}
 		</div>
 	);
 };

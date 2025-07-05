@@ -1,5 +1,5 @@
 use crate::AppState;
-use crate::auth::{AuthResponse, Credentials, authenticate_user, generate_token};
+use crate::auth::{AuthResponse, Credentials, authenticate_user, generate_token, hash_password};
 use crate::db;
 use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
@@ -115,8 +115,16 @@ pub async fn login(
 
 pub async fn signup(
 	State(app_state): State<AppState>,
-	Json(user): Json<User>,
+	Json(mut user): Json<User>,
 ) -> Result<Json<AuthResponse>> {
+	match hash_password(&user.password) {
+		Ok(hash) => user.password = hash,
+		Err(err) => {
+			eprintln!("{err}");
+			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
+		}
+	};
+
 	let created_user = match db::create_user(&app_state.conn, user).await {
 		Ok(created_user) => created_user,
 		Err(err) => {

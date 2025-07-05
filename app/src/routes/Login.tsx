@@ -18,14 +18,17 @@ const Login: Component = () => {
 		e.preventDefault();
 		switch (segment()) {
 			case "Login":
-				if (state.username && await login(state.username)) {
+				if (state.username && state.password && await login(state)) {
 					navigate("/");
 				} else {
 					alert("Login failed. Please try again.");
 				}
 				break;
 			case "Sign Up":
-				if (state.username && await signup(state.username)) {
+				if (
+					state.username && state.password &&
+					await signup({ name: state.username, ...state })
+				) {
 					navigate("/");
 				} else {
 					alert("Sign up failed. Please try again.");

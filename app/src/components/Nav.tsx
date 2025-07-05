@@ -15,8 +15,8 @@ const Nav: Component = () => {
 			<Directory />
 			<div class="absolute bottom-0 w-full flex p-2 gap-2 items-center justify-between rounded-2xl bg-background-50 dark:bg-background-900">
 				<div class="flex gap-2 items-center">
-					<Avatar fallback={user?.name[0]} className="w-10" />
-					{user?.name}
+					<Avatar fallback={user?.username[0]} className="w-10" />
+					{user?.username}
 				</div>
 				<Button
 					variant="flat"

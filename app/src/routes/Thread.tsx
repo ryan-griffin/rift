@@ -27,7 +27,7 @@ const MessageCard: Component<{ message: Message }> = (props) => {
 	return (
 		<div class="flex gap-4">
 			<Avatar
-				fallback={props.message.author_username[0].toUpperCase()}
+				fallback={props.message.author_username[0]}
 				className="h-12"
 			/>
 			<div class="flex flex-col">

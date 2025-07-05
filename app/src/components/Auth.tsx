@@ -9,14 +9,23 @@ import { isServer } from "solid-js/web";
 import { getCookie, setCookie } from "vinxi/http";
 import { User } from "../apiUtils.ts";
 
+interface LoginCredentials {
+	username: string;
+	password: string;
+}
+
+interface SignUpCredentials extends LoginCredentials {
+	name: string;
+}
+
 interface AuthState {
 	token: string | null;
 	user: User | null;
 }
 
 interface AuthContextType extends AuthState {
-	login: (username: string) => Promise<boolean>;
-	signup: (username: string) => Promise<boolean>;
+	login: (credentials: LoginCredentials) => Promise<boolean>;
+	signup: (credentials: SignUpCredentials) => Promise<boolean>;
 	logout: () => void;
 }
 
@@ -87,33 +96,16 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		getAuthCookie() || { token: null, user: null },
 	);
 
-	const login = async (username: string) => {
+	const authenticate = async (
+		endpoint: "login" | "signup",
+		credentials: LoginCredentials | SignUpCredentials,
+	) => {
 		const res = await fetch(
-			`http://${import.meta.env.VITE_ADDRESS}/api/login`,
+			`http://${import.meta.env.VITE_ADDRESS}/api/${endpoint}`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ username }),
-			},
-		);
-
-		if (res.ok) {
-			const data: AuthState = await res.json();
-			setState(data);
-			setAuthCookie(data);
-			return true;
-		}
-
-		return false;
-	};
-
-	const signup = async (username: string) => {
-		const res = await fetch(
-			`http://${import.meta.env.VITE_ADDRESS}/api/signup`,
-			{
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ username, name: username }),
+				body: JSON.stringify(credentials),
 			},
 		);
 
@@ -139,8 +131,8 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		get user() {
 			return state().user;
 		},
-		login,
-		signup,
+		login: (credentials) => authenticate("login", credentials),
+		signup: (credentials) => authenticate("signup", credentials),
 		logout,
 	};
 
