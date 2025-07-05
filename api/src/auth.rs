@@ -6,6 +6,7 @@ use axum::{
 	middleware::Next,
 	response::Response,
 };
+use bcrypt::BcryptError;
 use entity::users::Model as User;
 use jsonwebtoken::{
 	DecodingKey, EncodingKey, Header, TokenData, Validation, decode, encode, errors::Error,
@@ -23,14 +24,21 @@ struct Claims {
 #[derive(Deserialize)]
 pub struct Credentials {
 	pub username: String,
-	// TODO: Add password field
-	// pub password: String,
+	pub password: String,
 }
 
 #[derive(Serialize)]
 pub struct AuthResponse {
 	pub user: User,
 	pub token: String,
+}
+
+pub fn hash_password(password: &str) -> Result<String, BcryptError> {
+	bcrypt::hash(password, bcrypt::DEFAULT_COST)
+}
+
+fn verify_password(password: &str, hash: &str) -> Result<bool, BcryptError> {
+	bcrypt::verify(password, hash)
 }
 
 pub fn generate_token(username: &str) -> Result<String, Error> {
@@ -82,9 +90,12 @@ pub async fn authenticate_user(
 	db: &DatabaseConnection,
 	credentials: &Credentials,
 ) -> Result<Option<User>, DbErr> {
-	// TODO: Verify password here
 	match db::get_user(db, &credentials.username).await {
-		Ok(user) => Ok(Some(user)),
+		Ok(user) => match verify_password(&credentials.password, &user.password) {
+			Ok(true) => Ok(Some(user)),
+			Ok(false) => Ok(None),
+			Err(_) => Ok(None),
+		},
 		Err(DbErr::RecordNotFound(_)) => Ok(None),
 		Err(err) => Err(err),
 	}

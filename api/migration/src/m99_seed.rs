@@ -1,7 +1,7 @@
-use crate::m1_create_users_table::Users;
+// use crate::m1_create_users_table::Users;
 use crate::m2_create_directory_table::Directory;
-use crate::m3_create_messages_table::Messages;
-use sea_orm_migration::{prelude::*, sea_orm::sqlx::types::chrono};
+// use crate::m3_create_messages_table::Messages;
+use sea_orm_migration::prelude::*;
 
 #[derive(DeriveMigrationName)]
 pub struct Migration;
@@ -9,16 +9,16 @@ pub struct Migration;
 #[async_trait::async_trait]
 impl MigrationTrait for Migration {
 	async fn up(&self, manager: &SchemaManager) -> Result<(), DbErr> {
-		let users_insert = Query::insert()
-			.into_table(Users::Table)
-			.columns([Users::Username, Users::Name])
-			.values_from_panic(vec![
-				["alice".into(), "Alice".into()],
-				["bob".into(), "Bob".into()],
-				["joe".into(), "Joe".into()],
-			])
-			.to_owned();
-		manager.exec_stmt(users_insert).await?;
+		// let users_insert = Query::insert()
+		// 	.into_table(Users::Table)
+		// 	.columns([Users::Username, Users::Name])
+		// 	.values_from_panic(vec![
+		// 		["alice".into(), "Alice".into()],
+		// 		["bob".into(), "Bob".into()],
+		// 		["joe".into(), "Joe".into()],
+		// 	])
+		// 	.to_owned();
+		// manager.exec_stmt(users_insert).await?;
 
 		let root_insert = Query::insert()
 			.into_table(Directory::Table)
@@ -69,61 +69,61 @@ impl MigrationTrait for Migration {
 			.to_owned();
 		manager.exec_stmt(level3_insert).await?;
 
-		let messages_insert = Query::insert()
-			.into_table(Messages::Table)
-			.columns([
-				Messages::Content,
-				Messages::AuthorUsername,
-				Messages::DirectoryId,
-				Messages::CreatedAt,
-				Messages::ParentId,
-			])
-			.values_from_panic(vec![
-				[
-					"hey everyone! welcome to the general chat 👋".into(),
-					"alice".into(),
-					2.into(),
-					chrono::Utc::now().into(),
-					Option::<i32>::None.into(),
-				],
-				[
-					"hello chat".into(),
-					"bob".into(),
-					2.into(),
-					chrono::Utc::now().into(),
-					Option::<i32>::None.into(),
-				],
-				[
-					"hi".into(),
-					"bob".into(),
-					2.into(),
-					chrono::Utc::now().into(),
-					Some(2).into(),
-				],
-				[
-					"hello everyone! welcome to the roblox chat 👋".into(),
-					"bob".into(),
-					9.into(),
-					chrono::Utc::now().into(),
-					Option::<i32>::None.into(),
-				],
-				[
-					"yes".into(),
-					"alice".into(),
-					9.into(),
-					chrono::Utc::now().into(),
-					Option::<i32>::None.into(),
-				],
-				[
-					"hello".into(),
-					"joe".into(),
-					9.into(),
-					chrono::Utc::now().into(),
-					Option::<i32>::None.into(),
-				],
-			])
-			.to_owned();
-		manager.exec_stmt(messages_insert).await?;
+		// let messages_insert = Query::insert()
+		// 	.into_table(Messages::Table)
+		// 	.columns([
+		// 		Messages::Content,
+		// 		Messages::AuthorUsername,
+		// 		Messages::DirectoryId,
+		// 		Messages::CreatedAt,
+		// 		Messages::ParentId,
+		// 	])
+		// 	.values_from_panic(vec![
+		// 		[
+		// 			"hey everyone! welcome to the general chat 👋".into(),
+		// 			"alice".into(),
+		// 			2.into(),
+		// 			chrono::Utc::now().into(),
+		// 			Option::<i32>::None.into(),
+		// 		],
+		// 		[
+		// 			"hello chat".into(),
+		// 			"bob".into(),
+		// 			2.into(),
+		// 			chrono::Utc::now().into(),
+		// 			Option::<i32>::None.into(),
+		// 		],
+		// 		[
+		// 			"hi".into(),
+		// 			"bob".into(),
+		// 			2.into(),
+		// 			chrono::Utc::now().into(),
+		// 			Some(2).into(),
+		// 		],
+		// 		[
+		// 			"hello everyone! welcome to the roblox chat 👋".into(),
+		// 			"bob".into(),
+		// 			9.into(),
+		// 			chrono::Utc::now().into(),
+		// 			Option::<i32>::None.into(),
+		// 		],
+		// 		[
+		// 			"yes".into(),
+		// 			"alice".into(),
+		// 			9.into(),
+		// 			chrono::Utc::now().into(),
+		// 			Option::<i32>::None.into(),
+		// 		],
+		// 		[
+		// 			"hello".into(),
+		// 			"joe".into(),
+		// 			9.into(),
+		// 			chrono::Utc::now().into(),
+		// 			Option::<i32>::None.into(),
+		// 		],
+		// 	])
+		// 	.to_owned();
+		// manager.exec_stmt(messages_insert).await?;
 
 		Ok(())
 	}

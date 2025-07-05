@@ -13,6 +13,7 @@ impl MigrationTrait for Migration {
 					.if_not_exists()
 					.col(string(Users::Username).primary_key())
 					.col(string(Users::Name))
+					.col(string(Users::Password))
 					.to_owned(),
 			)
 			.await
@@ -30,4 +31,5 @@ pub enum Users {
 	Table,
 	Username,
 	Name,
+	Password,
 }

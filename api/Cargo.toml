@@ -22,3 +22,4 @@ futures-util = "0.3.31"
 reqwest = { version = "0.12.19", default-features = false, features = [
 	"native-tls",
 ] }
+bcrypt = "0.17.0"

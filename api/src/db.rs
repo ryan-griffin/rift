@@ -34,6 +34,7 @@ pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, Db
 	users::ActiveModel {
 		username: Set(user.username),
 		name: Set(user.name),
+		password: Set(user.password),
 	}
 	.insert(db)
 	.await
