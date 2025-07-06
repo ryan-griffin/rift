@@ -17,7 +17,6 @@ import {
 	WsMessage,
 } from "../apiUtils.ts";
 import Button from "../components/Button.tsx";
-import Input from "../components/Input.tsx";
 import { useAuth } from "../components/Auth.tsx";
 import SendHorizontal from "../assets/send-horizontal.svg";
 import Avatar from "../components/Avatar.tsx";
@@ -165,20 +164,23 @@ const Thread: Component = () => {
 					</For>
 				</div>
 			</Suspense>
-			<div class="absolute bottom-4 left-4 right-4 flex p-2 gap-1 bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm">
-				<Input
-					className="grow"
-					placeholder="Send a message..."
-					value={newMessage()}
-					onInput={(e) => setNewMessage(e.currentTarget.value)}
-					onKeyDown={(e) => {
-						if (e.key === "Enter") {
-							e.preventDefault();
-							handleSend();
-						}
-					}}
-				/>
+			<div class="absolute bottom-4 left-4 right-4 flex items-center bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[input:focus]:outline-2 -outline-offset-1 outline-accent-500">
+				<Suspense>
+					<input
+						class="grow p-4 rounded-l-2xl outline-0"
+						placeholder={`Message ${thread()?.[0].name}`}
+						value={newMessage()}
+						onInput={(e) => setNewMessage(e.currentTarget.value)}
+						onKeyDown={(e) => {
+							if (e.key === "Enter") {
+								e.preventDefault();
+								handleSend();
+							}
+						}}
+					/>
+				</Suspense>
 				<Button
+					className="mr-2"
 					type="submit"
 					variant="suggested"
 					icon={<SendHorizontal />}
