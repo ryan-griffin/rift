@@ -1,4 +1,4 @@
-use crate::db::{CreateMessage, create_message};
+use crate::db::create_message;
 use crate::entity::messages::Model as Message;
 use axum::extract::ws::{Message as WsMsg, WebSocket};
 use futures_util::{SinkExt, StreamExt, future, stream::SplitSink};
@@ -25,7 +25,7 @@ pub enum WsMessage {
 	#[serde(rename = "stop_typing")]
 	StopTyping { thread_id: i32 },
 	#[serde(rename = "create_message")]
-	CreateMessage(CreateMessage),
+	CreateMessage(Message),
 	#[serde(rename = "user_joined")]
 	UserJoinedThread { username: String, thread_id: i32 },
 	#[serde(rename = "user_left")]

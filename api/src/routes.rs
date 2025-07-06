@@ -11,7 +11,6 @@ use axum::{
 	http::StatusCode,
 	response::{Response, Result},
 };
-use db::CreateMessage;
 
 pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>> {
 	match db::get_users(&app_state.conn).await {
@@ -78,7 +77,7 @@ pub async fn get_message(
 pub async fn create_message(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
-	Json(message): Json<CreateMessage>,
+	Json(message): Json<Message>,
 ) -> Result<Json<Message>> {
 	match db::create_message(&app_state.conn, username, message).await {
 		Ok(created_message) => Ok(Json(created_message)),

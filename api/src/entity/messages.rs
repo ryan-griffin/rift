@@ -5,10 +5,13 @@ use serde::{Deserialize, Serialize};
 #[sea_orm(table_name = "messages")]
 pub struct Model {
 	#[sea_orm(primary_key)]
+	#[serde(skip_deserializing)]
 	pub id: i32,
 	pub content: String,
+	#[serde(skip_deserializing)]
 	pub author_username: String,
 	pub directory_id: i32,
+	#[serde(skip_deserializing)]
 	pub created_at: DateTimeWithTimeZone,
 	pub parent_id: Option<i32>,
 }
