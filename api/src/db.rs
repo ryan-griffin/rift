@@ -6,15 +6,7 @@ use chrono::Utc;
 use sea_orm::{
 	ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
 };
-use serde::{Deserialize, Serialize};
 use std::collections::VecDeque;
-
-#[derive(Serialize, Deserialize, Clone)]
-pub struct CreateMessage {
-	pub content: String,
-	pub directory_id: i32,
-	pub parent_id: Option<i32>,
-}
 
 pub async fn get_users(db: &DatabaseConnection) -> Result<Vec<User>, DbErr> {
 	users::Entity::find().all(db).await
@@ -91,7 +83,7 @@ pub async fn get_message(db: &DatabaseConnection, id: i32) -> Result<Message, Db
 pub async fn create_message(
 	db: &DatabaseConnection,
 	author_username: String,
-	message: CreateMessage,
+	message: Message,
 ) -> Result<Message, DbErr> {
 	messages::ActiveModel {
 		author_username: Set(author_username),
