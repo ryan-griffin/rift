@@ -1,3 +1,0 @@
-[workspace]
-members = ["api", "api/migration", "app/src-tauri"]
-resolver = "3"

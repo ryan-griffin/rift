@@ -3,6 +3,10 @@ name = "api"
 version = "0.1.0"
 edition = "2024"
 
+[workspace]
+members = ["migration"]
+resolver = "3"
+
 [dependencies]
 migration = { path = "migration" }
 tokio = { version = "1.45.1", features = ["full"] }
