@@ -36,11 +36,12 @@ static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| Client::new());
 
 #[tokio::main]
 async fn main() {
-	dotenv().expect("Failed to load .env file");
+	dotenv().ok();
 
 	let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 	let api_host = env::var("API_HOST").expect("API_HOST must be set");
 	let api_port = env::var("API_PORT").expect("API_PORT must be set");
+	let host = env::var("HOST").expect("HOST must be set");
 	let port = env::var("PORT")
 		.expect("PORT must be set")
 		.parse::<u16>()
@@ -70,7 +71,7 @@ async fn main() {
 		.route("/api/login", post(login))
 		.route("/api/signup", post(signup))
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
-			proxy(uri, port, headers)
+			proxy(uri, host, port, headers)
 		}))
 		.layer(cors)
 		.with_state(AppState { conn, ws_state });
@@ -82,9 +83,9 @@ async fn main() {
 	axum::serve(listener, app).await.unwrap();
 }
 
-async fn proxy(uri: Uri, port: u16, headers: HeaderMap) -> Result<Response> {
+async fn proxy(uri: Uri, host: String, port: u16, headers: HeaderMap) -> Result<Response> {
 	let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-	let proxy_url = format!("http://localhost:{port}{path_and_query}");
+	let proxy_url = format!("http://{host}:{port}{path_and_query}");
 
 	let mut request = HTTP_CLIENT.get(&proxy_url);
 

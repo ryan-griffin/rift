@@ -1,0 +1,46 @@
+version: "3.8"
+
+services:
+    database:
+        image: docker.io/library/postgres:latest
+        volumes:
+            - db_data:/var/lib/postgresql/data
+        environment:
+            POSTGRES_HOST_AUTH_METHOD: trust # For development only
+
+    api:
+        build:
+            context: ./api
+            dockerfile: Dockerfile
+            args:
+                - API_PORT=${API_PORT}
+        env_file:
+            - .env
+        environment:
+            - DATABASE_URL=postgres://postgres@database
+            - API_HOST=0.0.0.0
+            - HOST=app
+        ports:
+            - "${API_PORT}:${API_PORT}"
+        depends_on:
+            database:
+                condition: service_started
+
+    app:
+        build:
+            context: ./app
+            dockerfile: Dockerfile
+            args:
+                - API_HOST=${API_HOST}
+                - API_PORT=${API_PORT}
+                - API_CONTAINER=api
+                - PORT=${PORT}
+        environment:
+            - HOST=app
+            - PORT=${PORT}
+        depends_on:
+            api:
+                condition: service_started
+
+volumes:
+    db_data:

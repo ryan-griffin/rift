@@ -1,0 +1,7 @@
+Dockerfile
+node_modules/
+.vinxi/
+.output/
+.output-tauri/
+src-tauri/
+app.config.timestamp_*.js

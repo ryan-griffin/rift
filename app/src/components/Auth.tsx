@@ -7,7 +7,7 @@ import {
 } from "solid-js";
 import { isServer } from "solid-js/web";
 import { getCookie, setCookie } from "vinxi/http";
-import { User } from "../apiUtils.ts";
+import { resolveAddress, User } from "../apiUtils.ts";
 
 interface LoginCredentials {
 	username: string;
@@ -100,8 +100,9 @@ export const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		endpoint: "login" | "signup",
 		credentials: LoginCredentials | SignUpCredentials,
 	) => {
+		const address = resolveAddress();
 		const res = await fetch(
-			`http://${import.meta.env.VITE_ADDRESS}/api/${endpoint}`,
+			`http://${address}/api/${endpoint}`,
 			{
 				method: "POST",
 				headers: { "Content-Type": "application/json" },
