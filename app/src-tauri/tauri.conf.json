@@ -6,7 +6,7 @@
 	"build": {
 		"beforeDevCommand": "deno task dev",
 		"beforeBuildCommand": "deno task build",
-		"devUrl": "http://localhost:3000",
+		"devUrl": "http://localhost:8081",
 		"frontendDist": "../.output-tauri/public"
 	},
 	"app": {

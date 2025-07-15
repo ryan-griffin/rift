@@ -1,5 +1,6 @@
 import { action, query } from "@solidjs/router";
 import { createSignal } from "solid-js";
+import { isServer } from "solid-js/web";
 
 export interface User {
 	username: string;
@@ -38,9 +39,13 @@ export type WsMessage =
 	| ({ type: "message_created" } & Message)
 	| { type: "error"; message: string };
 
-const address = import.meta.env.VITE_ADDRESS;
+export const resolveAddress = (): string =>
+	(import.meta.env.VITE_CONTAINER_ADDRESS && isServer)
+		? import.meta.env.VITE_CONTAINER_ADDRESS
+		: import.meta.env.VITE_ADDRESS;
 
 export const useGetApi = query(async (token: string, url: string) => {
+	const address = resolveAddress();
 	const res = await fetch(`http://${address}/api${url}`, {
 		headers: {
 			"Content-Type": "application/json",
@@ -55,6 +60,7 @@ export const usePostApi = action(async (
 	url: string,
 	body: unknown,
 ) => {
+	const address = resolveAddress();
 	const res = await fetch(`http://${address}/api${url}`, {
 		method: "POST",
 		headers: {
@@ -70,6 +76,7 @@ export const useWebSocket = (token: string) => {
 	const [socket, setSocket] = createSignal<WebSocket | null>(null);
 
 	const connect = () => {
+		const address = resolveAddress();
 		const ws = new WebSocket(`ws://${address}/api/ws?token=${token}`);
 
 		ws.onopen = () => setSocket(ws);
