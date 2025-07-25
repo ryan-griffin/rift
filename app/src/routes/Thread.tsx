@@ -7,6 +7,7 @@ import {
 	onMount,
 	Suspense,
 } from "solid-js";
+import { createStore } from "solid-js/store";
 import { createAsync, useParams } from "@solidjs/router";
 import {
 	CreateMessage,
@@ -105,7 +106,10 @@ const Thread: Component = () => {
 	const [messages, setMessages] = createSignal<Message[]>([]);
 	const [typingUsers, setTypingUsers] = createSignal<string[]>([]);
 
-	const allMessages = () => [...(initialMessages() || []), ...messages()];
+	createEffect(() => {
+		const initial = initialMessages();
+		if (initial) setMessages(initial);
+	});
 
 	onMount(() => {
 		const ws = connect();
@@ -146,7 +150,6 @@ const Thread: Component = () => {
 				type: "leave_thread",
 				thread_id: prevId,
 			});
-			setMessages([]);
 			setTypingUsers([]);
 		}
 
@@ -224,19 +227,29 @@ const Thread: Component = () => {
 	};
 
 	let messagesContainer: HTMLDivElement | undefined;
-
-	createEffect(() => {
-		if (allMessages().length > 0 && messagesContainer) {
-			messagesContainer.scrollTop = messagesContainer.scrollHeight;
-		}
+	const [scrollState, setScrollState] = createStore({
+		isTop: false,
+		isBottom: true,
 	});
 
-	const [isScrolledFromTop, setIsScrolledFromTop] = createSignal(false);
 	const handleScroll = () => {
 		if (messagesContainer) {
-			setIsScrolledFromTop(messagesContainer.scrollTop > 0);
+			const { scrollTop, scrollHeight, clientHeight } = messagesContainer;
+			setScrollState({
+				isTop: scrollTop === 0,
+				isBottom: scrollTop + clientHeight >= scrollHeight - 1,
+			});
 		}
 	};
+
+	onMount(() => {
+		createEffect(() => {
+			const messageCount = messages().length;
+			if (messagesContainer && scrollState.isBottom && messageCount > 0) {
+				messagesContainer.scrollTop = messagesContainer.scrollHeight;
+			}
+		});
+	});
 
 	return (
 		<div class="relative h-full">
@@ -246,22 +259,20 @@ const Thread: Component = () => {
 					<p class="font-bold">{thread()?.[0].name}</p>
 				</Suspense>
 			</header>
-			<Suspense fallback={<p>Loading...</p>}>
-				<div
-					class="flex flex-col p-4 pb-27 gap-6 h-[calc(100vh-4.5rem)] overflow-y-auto"
-					style={{
-						"mask-image": isScrolledFromTop()
-							? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
-							: "none",
-					}}
-					ref={messagesContainer}
-					onScroll={handleScroll}
-				>
-					<For each={allMessages()}>
-						{(message) => <MessageCard message={message} />}
-					</For>
-				</div>
-			</Suspense>
+			<div
+				class="flex flex-col p-4 pb-27 gap-6 h-[calc(100vh-4.5rem)] overflow-y-auto"
+				style={{
+					"mask-image": !scrollState.isTop
+						? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
+						: "none",
+				}}
+				ref={messagesContainer}
+				onScroll={handleScroll}
+			>
+				<For each={messages()}>
+					{(message) => <MessageCard message={message} />}
+				</For>
+			</div>
 			<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
 				<div class="flex items-center bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[input:focus]:outline-2 -outline-offset-1 outline-accent-500">
 					<Suspense>
