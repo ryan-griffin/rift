@@ -1,6 +1,7 @@
 import {
 	Component,
 	createEffect,
+	createMemo,
 	createSignal,
 	For,
 	onCleanup,
@@ -23,23 +24,25 @@ import SendHorizontal from "../assets/send-horizontal.svg";
 import Avatar from "../components/Avatar.tsx";
 import MessageSquareText from "../assets/message-square-text.svg";
 
-const MessageCard: Component<{ message: Message }> = (props) => {
+const MessageCard: Component<{ messages: Message[] }> = (props) => {
 	return (
 		<div class="flex gap-4">
 			<Avatar
-				fallback={props.message.author_username[0]}
+				fallback={props.messages[0].author_username[0]}
 				className="h-12"
 			/>
 			<div class="flex flex-col">
 				<div class="flex gap-2 items-center">
 					<p class="text-accent-500 font-medium">
-						{props.message.author_username}
+						{props.messages[0].author_username}
 					</p>
 					<p class="text-sm text-background-400 dark:text-background-500">
-						{new Date(props.message.created_at).toLocaleString()}
+						{new Date(props.messages[0].created_at).toLocaleString()}
 					</p>
 				</div>
-				<p>{props.message.content}</p>
+				<For each={props.messages}>
+					{(message) => <p>{message.content}</p>}
+				</For>
 			</div>
 		</div>
 	);
@@ -109,6 +112,35 @@ const Thread: Component = () => {
 	createEffect(() => {
 		const initial = initialMessages();
 		if (initial) setMessages(initial);
+	});
+
+	const groupedMessages = createMemo(() => {
+		const msgs = messages();
+		if (msgs.length === 0) return [];
+
+		const grouped: Message[][] = [];
+		let currentGroup: Message[] = [msgs[0]];
+
+		for (const currentMessage of msgs.slice(1)) {
+			const firstMessage = currentGroup[0];
+
+			const timeDiff = new Date(currentMessage.created_at).getTime() -
+				new Date(firstMessage.created_at).getTime();
+			const duration = 60 * 1000;
+
+			if (
+				currentMessage.author_username === firstMessage.author_username &&
+				timeDiff <= duration
+			) {
+				currentGroup.push(currentMessage);
+			} else {
+				grouped.push(currentGroup);
+				currentGroup = [currentMessage];
+			}
+		}
+
+		grouped.push(currentGroup);
+		return grouped;
 	});
 
 	onMount(() => {
@@ -269,8 +301,8 @@ const Thread: Component = () => {
 				ref={messagesContainer}
 				onScroll={handleScroll}
 			>
-				<For each={messages()}>
-					{(message) => <MessageCard message={message} />}
+				<For each={groupedMessages()}>
+					{(messages) => <MessageCard messages={messages} />}
 				</For>
 			</div>
 			<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
