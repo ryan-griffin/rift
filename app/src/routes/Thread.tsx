@@ -94,9 +94,7 @@ const TypingIndicator: Component<{ users: string[] }> = (props) => {
 const Thread: Component = () => {
 	const params = useParams<{ id: string }>();
 	const { token } = useAuth();
-	const { connect, disconnect, sendMessage } = useWebSocket(
-		token!,
-	);
+	const { connect, disconnect, sendMessage } = useWebSocket(token!);
 
 	const thread = createAsync<DirectoryNode[]>(() =>
 		useGetApi(token!, `/directory/${params.id}`)
@@ -193,16 +191,6 @@ const Thread: Component = () => {
 		return id;
 	});
 
-	onCleanup(() => {
-		stopTyping();
-		sendMessage({
-			type: "leave_thread",
-			thread_id: Number(params.id),
-		});
-		disconnect();
-	});
-
-	const [newMessage, setNewMessage] = createSignal("");
 	const [isTyping, setIsTyping] = createSignal(false);
 	let isTypingTimeout: number | undefined;
 
@@ -239,6 +227,7 @@ const Thread: Component = () => {
 		}
 	};
 
+	const [newMessage, setNewMessage] = createSignal("");
 	const handleSend = () => {
 		if (!newMessage()) return;
 
@@ -257,6 +246,15 @@ const Thread: Component = () => {
 
 		setNewMessage("");
 	};
+
+	onCleanup(() => {
+		stopTyping();
+		sendMessage({
+			type: "leave_thread",
+			thread_id: Number(params.id),
+		});
+		disconnect();
+	});
 
 	let messagesContainer: HTMLDivElement | undefined;
 	const [scrollState, setScrollState] = createStore({
