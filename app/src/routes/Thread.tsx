@@ -283,6 +283,25 @@ const Thread: Component = () => {
 		});
 	});
 
+	let inputRef: HTMLInputElement | undefined;
+	const handleGlobalKeydown = (e: KeyboardEvent) => {
+		if (document.activeElement === inputRef) return;
+		if (
+			e.ctrlKey || e.altKey || e.metaKey || e.key === "Tab" ||
+			e.key === "Escape" || e.key === "Enter" || e.key.startsWith("Arrow") ||
+			e.key.startsWith("F") || e.key === "Backspace" || e.key === "Delete"
+		) return;
+
+		if (inputRef && e.key.length === 1) inputRef.focus();
+	};
+
+	onMount(() => {
+		document.addEventListener("keydown", handleGlobalKeydown);
+		onCleanup(() =>
+			document.removeEventListener("keydown", handleGlobalKeydown)
+		);
+	});
+
 	return (
 		<div class="relative h-full">
 			<header class="flex p-4 gap-2">
@@ -310,6 +329,7 @@ const Thread: Component = () => {
 					<Suspense>
 						<input
 							class="grow p-4 rounded-l-2xl outline-0"
+							ref={inputRef}
 							placeholder={`Message ${thread()?.[0].name}`}
 							value={newMessage()}
 							onInput={(e) => {
