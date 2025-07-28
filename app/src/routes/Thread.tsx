@@ -33,7 +33,7 @@ const MessageCard: Component<{ messages: Message[] }> = (props) => {
 			/>
 			<div class="flex flex-col">
 				<div class="flex gap-2 items-center">
-					<p class="text-accent-500 font-medium">
+					<p class="text-accent-500 font-semibold">
 						{props.messages[0].author_username}
 					</p>
 					<p class="text-sm text-background-400 dark:text-background-500">
@@ -309,7 +309,7 @@ const Thread: Component = () => {
 				</Suspense>
 			</header>
 			<div
-				class="flex flex-col p-4 pb-27 gap-6 h-[calc(100vh-4.5rem)] overflow-y-auto"
+				class="flex flex-col p-4 pb-27 h-[calc(100%-3.5rem)] overflow-y-auto"
 				style={{
 					"mask-image": !scrollState.isTop
 						? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
@@ -318,9 +318,12 @@ const Thread: Component = () => {
 				ref={messagesContainer}
 				onScroll={handleScroll}
 			>
-				<For each={groupedMessages()}>
-					{(messages) => <MessageCard messages={messages} />}
-				</For>
+				<div class="flex-1" />
+				<div class="flex flex-col gap-6">
+					<For each={groupedMessages()}>
+						{(messages) => <MessageCard messages={messages} />}
+					</For>
+				</div>
 			</div>
 			<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
 				<div class="flex items-center bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[input:focus]:outline-2 -outline-offset-1 outline-accent-500">

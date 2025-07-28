@@ -38,7 +38,7 @@ const Login: Component = () => {
 	};
 
 	return (
-		<main class="flex items-center justify-center h-screen">
+		<div class="h-full flex items-center justify-center">
 			<form
 				onSubmit={handleSubmit}
 				class="flex flex-col p-8 gap-4 rounded-2xl bg-background-50 dark:bg-background-900"
@@ -61,7 +61,7 @@ const Login: Component = () => {
 				/>
 				<Button type="submit" variant="suggested" text={segment()} />
 			</form>
-		</main>
+		</div>
 	);
 };
 
