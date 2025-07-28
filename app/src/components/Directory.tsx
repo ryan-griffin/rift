@@ -115,7 +115,7 @@ const Directory = () => {
 								rootNode: directory,
 							})}
 						>
-							<TreeView.Tree class="flex flex-col p-2 gap-1">
+							<TreeView.Tree class="flex flex-col gap-1">
 								<For each={directory.children}>
 									{(node, index) => (
 										<DirectoryItem

@@ -26,7 +26,11 @@ export default function App() {
 					<Show when={isTauri()}>
 						<WindowControls />
 					</Show>
-					{props.children}
+					<main
+						class={isTauri() ? "h-[calc(100vh-3rem)]" : "h-screen"}
+					>
+						{props.children}
+					</main>
 				</AuthProvider>
 			)}
 		>
@@ -34,19 +38,13 @@ export default function App() {
 			<Route
 				component={(props) => (
 					<ProtectedRoute>
-						<div
-							class={`flex m-2 gap-2 ${
-								isTauri()
-									? "h-[calc(100vh-3.5rem)] mt-0"
-									: "h-[calc(100vh-1rem)]"
-							}`}
-						>
+						<div class={`h-full flex p-2 ${isTauri() ? "pt-0" : ""} gap-2`}>
 							<Splitter
 								a={<Nav />}
 								b={
-									<main class="h-full rounded-xl bg-background-50 dark:bg-background-900">
+									<div class="h-full rounded-xl bg-background-50 dark:bg-background-900">
 										{props.children}
-									</main>
+									</div>
 								}
 							/>
 							<Members />
