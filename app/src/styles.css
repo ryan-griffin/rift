@@ -1,9 +1,5 @@
 @import "tailwindcss";
 
-:root {
-	--default-base-color: #b34472;
-}
-
 @theme {
 	--color-accent-50: unset;
 	--color-accent-100: unset;

@@ -1,8 +1,7 @@
 import "./styles.css";
-import { onMount, Show } from "solid-js";
+import { Show } from "solid-js";
 import { Route, Router } from "@solidjs/router";
 import { isTauri } from "@tauri-apps/api/core";
-import { initializeTheme } from "./colorUtils.ts";
 import WindowControls from "./components/WindowControls.tsx";
 import Splitter from "./components/Spiltter.tsx";
 import Nav from "./components/Nav.tsx";
@@ -11,18 +10,19 @@ import Members from "./components/Members.tsx";
 import Thread from "./routes/Thread.tsx";
 import Settings from "./routes/Settings.tsx";
 import Login from "./routes/Login.tsx";
-import { AuthProvider } from "./components/Auth.tsx";
+import AuthProvider from "./components/Auth.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import { generateThemeCSS, getTheme } from "./colorUtils.ts";
 
-export default function App() {
-	onMount(() => {
-		initializeTheme();
-	});
+const App = () => {
+	const theme = getTheme();
+	const themeCSS = generateThemeCSS(theme);
 
 	return (
 		<Router
 			root={(props) => (
 				<AuthProvider>
+					<style innerHTML={themeCSS} />
 					<Show when={isTauri()}>
 						<WindowControls />
 					</Show>
@@ -58,4 +58,6 @@ export default function App() {
 			</Route>
 		</Router>
 	);
-}
+};
+
+export default App;

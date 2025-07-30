@@ -45,7 +45,7 @@ pub fn generate_token(username: &str) -> Result<String, Error> {
 	let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
 
 	let expiration = chrono::Utc::now()
-		.checked_add_signed(chrono::Duration::hours(24))
+		.checked_add_signed(chrono::Duration::days(30))
 		.expect("valid timestamp")
 		.timestamp() as usize;
 

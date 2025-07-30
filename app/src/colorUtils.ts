@@ -1,23 +1,13 @@
+import { getStorageItem, setStorageItem } from "./storageUtils.ts";
+
+type Palette = Record<string, string>;
+
 interface Theme {
-	accent: Record<string, string>;
-	background: Record<string, string>;
+	accent: Palette;
+	background: Palette;
 }
 
-function getDefaultBaseColor(): string {
-	const cssDefault = getComputedStyle(document.documentElement)
-		.getPropertyValue("--default-base-color")
-		.trim();
-
-	return cssDefault;
-}
-
-export function storeBaseColor(baseColor: string) {
-	localStorage.setItem("user-base-color", baseColor);
-}
-
-export function getBaseColor(): string | null {
-	return localStorage.getItem("user-base-color");
-}
+const defaultBaseColor = "#b34472";
 
 const hexToRgb = (hex: string): [number, number, number] => {
 	// Handle CSS variables that might return rgb() format
@@ -46,7 +36,7 @@ const rgbToHex = (r: number, g: number, b: number): string => {
 	}${Math.round(b).toString(16).padStart(2, "0")}`;
 };
 
-function generateAccentPalette(baseColor: string): Record<string, string> {
+const generateAccentPalette = (baseColor: string): Palette => {
 	// Lighten or darken a color by a factor
 	const adjustColor = (
 		rgb: [number, number, number],
@@ -83,17 +73,19 @@ function generateAccentPalette(baseColor: string): Record<string, string> {
 		"950": 0.25, // Darkest
 	};
 
-	const palette: Record<string, string> = {};
+	const palette: Palette = {};
 	for (const [shade, factor] of Object.entries(factors)) {
 		palette[shade] = adjustColor(baseRgb, factor);
 	}
 
 	return palette;
-}
+};
 
-function generateBackgroundPalette(baseColor: string): Record<string, string> {
+const generateBackgroundPalette = (
+	baseColor: string,
+): Palette => {
 	const baseRgb = hexToRgb(baseColor);
-	const backgroundPalette: Record<string, string> = {};
+	const backgroundPalette: Palette = {};
 
 	// Create neutral shades from white to black with varying color hints
 	const shadeValues = {
@@ -122,16 +114,52 @@ function generateBackgroundPalette(baseColor: string): Record<string, string> {
 	}
 
 	return backgroundPalette;
-}
+};
 
-export function generateTheme(baseColor: string): Theme {
-	return {
-		accent: generateAccentPalette(baseColor),
-		background: generateBackgroundPalette(baseColor),
-	};
-}
+const generateTheme = (baseColor: string): Theme => ({
+	accent: generateAccentPalette(baseColor),
+	background: generateBackgroundPalette(baseColor),
+});
 
-export function applyTheme(theme: Theme) {
+const setBaseColor = (baseColor: string) =>
+	setStorageItem("user-base-color", baseColor);
+
+const getBaseColor = () => {
+	const baseColor = getStorageItem<string>("user-base-color");
+	if (baseColor) return baseColor;
+
+	setBaseColor(defaultBaseColor);
+	return defaultBaseColor;
+};
+
+const setTheme = (theme: Theme) => setStorageItem("user-theme", theme);
+
+export const getTheme = (): Theme => {
+	const theme = getStorageItem<Theme>("user-theme");
+	if (theme) return theme;
+
+	// If no theme exists, generate from stored base color or default
+	const baseColor = getBaseColor();
+	const newTheme = generateTheme(baseColor);
+	setTheme(newTheme);
+	return newTheme;
+};
+
+export const generateThemeCSS = (theme: Theme): string => {
+	const cssVars: string[] = [];
+
+	for (const [shade, color] of Object.entries(theme.accent)) {
+		cssVars.push(`--color-accent-${shade}: ${color};`);
+	}
+
+	for (const [shade, color] of Object.entries(theme.background)) {
+		cssVars.push(`--color-background-${shade}: ${color};`);
+	}
+
+	return `:root { ${cssVars.join(" ")} }`;
+};
+
+const applyTheme = (theme: Theme) => {
 	// Apply accent palette
 	for (const [shade, color] of Object.entries(theme.accent)) {
 		document.documentElement.style.setProperty(
@@ -147,53 +175,22 @@ export function applyTheme(theme: Theme) {
 			color,
 		);
 	}
-}
+};
 
-// Store the complete theme
-export function storeTheme(theme: Theme) {
-	localStorage.setItem("user-theme", JSON.stringify(theme));
-}
-
-// Get the stored theme or generate a new one
-export function getTheme(): Theme {
-	const themeJson = localStorage.getItem("user-theme");
-
-	if (themeJson) {
-		try {
-			return JSON.parse(themeJson);
-		} catch (e) {
-			console.error("Failed to parse saved theme", e);
-		}
-	}
-
-	// If no theme exists, generate from stored base color or default
-	const baseColor = getBaseColor() || getDefaultBaseColor();
-	const newTheme = generateTheme(baseColor);
-	storeBaseColor(baseColor);
-	storeTheme(newTheme);
-	return newTheme;
-}
-
-export function initializeTheme() {
-	const theme = getTheme();
-	applyTheme(theme);
-}
-
-export function updateTheme(baseColor: string) {
+export const updateTheme = (baseColor: string) => {
 	const newTheme = generateTheme(baseColor);
 
 	// Apply and store only the base color and theme
 	applyTheme(newTheme);
-	storeBaseColor(baseColor);
-	storeTheme(newTheme);
-}
+	setBaseColor(baseColor);
+	setTheme(newTheme);
+};
 
-export function resetTheme() {
-	const defaultColor = getDefaultBaseColor();
-	const defaultTheme = generateTheme(defaultColor);
+export const resetTheme = () => {
+	const defaultTheme = generateTheme(defaultBaseColor);
 
 	// Apply and store only the base color and theme
 	applyTheme(defaultTheme);
-	storeBaseColor(defaultColor);
-	storeTheme(defaultTheme);
-}
+	setBaseColor(defaultBaseColor);
+	setTheme(defaultTheme);
+};
