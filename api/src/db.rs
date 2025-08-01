@@ -85,14 +85,29 @@ pub async fn create_message(
 	author_username: String,
 	message: Message,
 ) -> Result<Message, DbErr> {
-	messages::ActiveModel {
-		author_username: Set(author_username),
-		content: Set(message.content),
-		directory_id: Set(message.directory_id),
-		parent_id: Set(message.parent_id),
-		created_at: Set(Utc::now().into()),
-		..Default::default()
+	match directory::Entity::find_by_id(message.directory_id)
+		.one(db)
+		.await?
+	{
+		Some(directory) if directory.r#type == "thread" => {
+			messages::ActiveModel {
+				author_username: Set(author_username),
+				content: Set(message.content),
+				directory_id: Set(message.directory_id),
+				parent_id: Set(message.parent_id),
+				created_at: Set(Utc::now().into()),
+				..Default::default()
+			}
+			.insert(db)
+			.await
+		}
+		Some(directory) => Err(DbErr::Custom(format!(
+			"Messages can only be created for a directory node of type 'thread', not '{}'",
+			directory.r#type
+		))),
+		None => Err(DbErr::RecordNotFound(format!(
+			"Directory with id {} not found",
+			message.directory_id
+		))),
 	}
-	.insert(db)
-	.await
 }

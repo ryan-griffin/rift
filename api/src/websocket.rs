@@ -159,7 +159,10 @@ async fn handle_incoming_message(
 					broadcast_to_thread(ws_state, message.directory_id, broadcast_msg).await;
 					Ok(())
 				}
-				Err(err) => Err(format!("Failed to create message: {err}")),
+				Err(err) => {
+					eprintln!("{err}");
+					Err(format!("Failed to create message"))
+				}
 			}
 		}
 		_ => Ok(()),
