@@ -22,6 +22,7 @@ impl MigrationTrait for Migration {
 							.on_delete(ForeignKeyAction::SetNull)
 							.on_update(ForeignKeyAction::Cascade),
 					)
+					.check(Expr::col(Directory::Type).is_in(vec!["folder", "thread"]))
 					.to_owned(),
 			)
 			.await

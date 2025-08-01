@@ -21,6 +21,14 @@ pub enum Relation {
 		on_delete = "SetNull"
 	)]
 	SelfRef,
+	#[sea_orm(has_many = "super::messages::Entity")]
+	Messages,
+}
+
+impl Related<super::messages::Entity> for Entity {
+	fn to() -> RelationDef {
+		Relation::Messages.def()
+	}
 }
 
 impl ActiveModelBehavior for ActiveModel {}
