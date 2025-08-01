@@ -55,7 +55,7 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 				when={node.type === "folder"}
 				fallback={
 					<A
-						href={`directory/${node.id}`}
+						href={`thread/${node.id}`}
 						class={nodeClass}
 						inactiveClass="hover:bg-background-200 dark:hover:bg-background-800"
 						activeClass="bg-accent-100 dark:bg-accent-800"

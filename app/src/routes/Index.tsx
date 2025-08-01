@@ -1,15 +1,35 @@
-import { Component } from "solid-js";
-import { isServer } from "solid-js/web";
+import { Component, createEffect } from "solid-js";
+import { createAsync, useNavigate } from "@solidjs/router";
+import { DirectoryNode, useGetApi } from "../apiUtils.ts";
+import { useAuth } from "../components/Auth.tsx";
+import { getStorageItem } from "../storageUtils.ts";
 
 const Index: Component = () => {
-	return (
-		<>
-			<h1 class="text-3xl font-bold text-accent-500">
-				Rift
-			</h1>
-			<div>{isServer ? "Server" : "Client"}</div>
-		</>
-	);
+	const navigate = useNavigate();
+	const { token } = useAuth();
+
+	const lastThread = getStorageItem<number>("lastThread");
+	if (lastThread) {
+		navigate(`/thread/${lastThread}`);
+	} else {
+		const directory = createAsync<DirectoryNode[]>(() =>
+			useGetApi(token!, "/directory/1")
+		);
+
+		createEffect(() => {
+			const dir = directory();
+			if (!dir || dir.length === 0) return;
+
+			for (const node of dir) {
+				if (node.type === "thread") {
+					navigate(`/thread/${node.id}`);
+					return;
+				}
+			}
+		});
+	}
+
+	return null;
 };
 
 export default Index;

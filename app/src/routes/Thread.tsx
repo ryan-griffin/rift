@@ -6,6 +6,7 @@ import {
 	For,
 	onCleanup,
 	onMount,
+	Show,
 	Suspense,
 } from "solid-js";
 import { createStore } from "solid-js/store";
@@ -23,6 +24,7 @@ import { useAuth } from "../components/Auth.tsx";
 import SendHorizontal from "../assets/send-horizontal.svg";
 import Avatar from "../components/Avatar.tsx";
 import MessageSquareText from "../assets/message-square-text.svg";
+import { setStorageItem } from "../storageUtils.ts";
 
 const MessageCard: Component<{ messages: Message[] }> = (props) => {
 	return (
@@ -187,6 +189,7 @@ const Thread: Component = () => {
 			type: "join_thread",
 			thread_id: id,
 		});
+		setStorageItem("lastThread", id);
 
 		return id;
 	});
@@ -301,62 +304,71 @@ const Thread: Component = () => {
 	});
 
 	return (
-		<div class="relative h-full">
-			<header class="flex p-4 gap-2">
-				<MessageSquareText />
-				<Suspense>
-					<p class="font-bold">{thread()?.[0].name}</p>
-				</Suspense>
-			</header>
-			<div
-				class="flex flex-col p-4 pb-27 h-[calc(100%-3.5rem)] overflow-y-auto"
-				style={{
-					"mask-image": !scrollState.isTop
-						? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
-						: "none",
-				}}
-				ref={messagesContainer}
-				onScroll={handleScroll}
+		<Suspense>
+			<Show
+				when={thread()?.[0].type === "thread"}
+				fallback={
+					<div class="h-full flex items-center justify-center">
+						<p class="text-xl font-bold text-background-400 dark:text-background-500">
+							Thread not found
+						</p>
+					</div>
+				}
 			>
-				<div class="flex-1" />
-				<div class="flex flex-col gap-6">
-					<For each={groupedMessages()}>
-						{(messages) => <MessageCard messages={messages} />}
-					</For>
+				<div class="relative h-full">
+					<header class="flex p-4 gap-2">
+						<MessageSquareText />
+						<p class="font-bold">{thread()?.[0].name}</p>
+					</header>
+					<div
+						class="flex flex-col p-4 pb-27 h-[calc(100%-3.5rem)] overflow-y-auto"
+						style={{
+							"mask-image": !scrollState.isTop
+								? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
+								: "none",
+						}}
+						ref={messagesContainer}
+						onScroll={handleScroll}
+					>
+						<div class="flex-1" />
+						<div class="flex flex-col gap-6">
+							<For each={groupedMessages()}>
+								{(messages) => <MessageCard messages={messages} />}
+							</For>
+						</div>
+					</div>
+					<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
+						<div class="flex items-center bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[input:focus]:outline-2 -outline-offset-1 outline-accent-500">
+							<input
+								class="grow p-4 rounded-l-2xl outline-0"
+								ref={inputRef}
+								placeholder={`Message ${thread()?.[0].name}`}
+								value={newMessage()}
+								onInput={(e) => {
+									setNewMessage(e.currentTarget.value);
+									e.currentTarget.value.trim() ? startTyping() : stopTyping();
+								}}
+								onKeyDown={(e) => {
+									if (e.key === "Enter") {
+										e.preventDefault();
+										handleSend();
+									}
+								}}
+								onBlur={stopTyping}
+							/>
+							<Button
+								className="mr-2"
+								type="submit"
+								variant="suggested"
+								icon={<SendHorizontal />}
+								onClick={handleSend}
+							/>
+						</div>
+						<TypingIndicator users={typingUsers()} />
+					</div>
 				</div>
-			</div>
-			<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
-				<div class="flex items-center bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[input:focus]:outline-2 -outline-offset-1 outline-accent-500">
-					<Suspense>
-						<input
-							class="grow p-4 rounded-l-2xl outline-0"
-							ref={inputRef}
-							placeholder={`Message ${thread()?.[0].name}`}
-							value={newMessage()}
-							onInput={(e) => {
-								setNewMessage(e.currentTarget.value);
-								e.currentTarget.value.trim() ? startTyping() : stopTyping();
-							}}
-							onKeyDown={(e) => {
-								if (e.key === "Enter") {
-									e.preventDefault();
-									handleSend();
-								}
-							}}
-							onBlur={stopTyping}
-						/>
-					</Suspense>
-					<Button
-						className="mr-2"
-						type="submit"
-						variant="suggested"
-						icon={<SendHorizontal />}
-						onClick={handleSend}
-					/>
-				</div>
-				<TypingIndicator users={typingUsers()} />
-			</div>
-		</div>
+			</Show>
+		</Suspense>
 	);
 };
 

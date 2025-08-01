@@ -53,7 +53,7 @@ const App = () => {
 				)}
 			>
 				<Route path="/" component={Index} />
-				<Route path="/directory/:id" component={Thread} />
+				<Route path="/thread/:id" component={Thread} />
 				<Route path="/settings" component={Settings} />
 			</Route>
 		</Router>

@@ -52,7 +52,7 @@ export const useGetApi = query(async (token: string, url: string) => {
 			Authorization: `Bearer ${token}`,
 		},
 	});
-	return res.json();
+	if (res.ok) return await res.json();
 }, "useGetApi");
 
 export const usePostApi = action(async (
@@ -69,7 +69,7 @@ export const usePostApi = action(async (
 		},
 		body: JSON.stringify(body),
 	});
-	return res.json();
+	if (res.ok) return await res.json();
 });
 
 export const useWebSocket = (token: string) => {
