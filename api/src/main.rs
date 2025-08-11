@@ -18,13 +18,13 @@ use reqwest::Client;
 use routes::*;
 use sea_orm::{Database, DatabaseConnection};
 use std::sync::LazyLock;
-use std::{
-	env,
-	{collections::HashMap, sync::Arc},
+use std::{env, sync::Arc};
+use tokio::{
+	net::TcpListener,
+	sync::{Mutex, broadcast},
 };
-use tokio::{net::TcpListener, sync::Mutex};
 use tower_http::cors::{Any, CorsLayer};
-use websocket::WsState;
+use websocket::{WsMessage, WsState};
 
 #[derive(Clone)]
 pub struct AppState {
@@ -52,7 +52,8 @@ async fn main() {
 		.expect("Failed to connect to the database");
 	Migrator::up(&conn, None).await.unwrap();
 
-	let ws_state: WsState = Arc::new(Mutex::new(HashMap::new()));
+	let (tx, _) = broadcast::channel::<WsMessage>(1000);
+	let ws_state: WsState = Arc::new(Mutex::new(tx));
 
 	let cors = CorsLayer::new()
 		.allow_origin(Any)

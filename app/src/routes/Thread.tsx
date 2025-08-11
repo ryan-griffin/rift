@@ -151,17 +151,20 @@ const Thread: Component = () => {
 
 			switch (message.type) {
 				case "message_created": {
+					if (message.directory_id !== Number(params.id)) return;
 					const { type: _type, ...messageData } = message;
 					setMessages((prev) => [...prev, messageData]);
 					break;
 				}
 				case "user_typing": {
+					if (message.thread_id !== Number(params.id)) return;
 					setTypingUsers((prev) =>
 						prev.includes(message.username) ? prev : [...prev, message.username]
 					);
 					break;
 				}
 				case "user_stopped_typing": {
+					if (message.thread_id !== Number(params.id)) return;
 					setTypingUsers((prev) =>
 						prev.filter((user) => user !== message.username)
 					);
@@ -176,21 +179,8 @@ const Thread: Component = () => {
 
 	createEffect((prevId: number | undefined) => {
 		const id = Number(params.id);
-
-		if (prevId && prevId !== id) {
-			sendMessage({
-				type: "leave_thread",
-				thread_id: prevId,
-			});
-			setTypingUsers([]);
-		}
-
-		sendMessage({
-			type: "join_thread",
-			thread_id: id,
-		});
+		if (prevId && prevId !== id) setTypingUsers([]);
 		setStorageItem("lastThread", id);
-
 		return id;
 	});
 
@@ -252,10 +242,6 @@ const Thread: Component = () => {
 
 	onCleanup(() => {
 		stopTyping();
-		sendMessage({
-			type: "leave_thread",
-			thread_id: Number(params.id),
-		});
 		disconnect();
 	});
 

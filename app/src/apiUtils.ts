@@ -27,13 +27,9 @@ export interface Message extends CreateMessage {
 }
 
 export type WsMessage =
-	| { type: "join_thread"; thread_id: number }
-	| { type: "leave_thread"; thread_id: number }
 	| { type: "typing"; thread_id: number }
 	| { type: "stop_typing"; thread_id: number }
 	| ({ type: "create_message" } & CreateMessage)
-	| { type: "user_joined"; username: string; thread_id: number }
-	| { type: "user_left"; username: string; thread_id: number }
 	| { type: "user_typing"; username: string; thread_id: number }
 	| { type: "user_stopped_typing"; username: string; thread_id: number }
 	| ({ type: "message_created" } & Message)
