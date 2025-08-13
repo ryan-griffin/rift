@@ -1,5 +1,4 @@
 import { action, query } from "@solidjs/router";
-import { createSignal } from "solid-js";
 import { isServer } from "solid-js/web";
 
 export interface User {
@@ -67,35 +66,3 @@ export const usePostApi = action(async (
 	});
 	if (res.ok) return await res.json();
 });
-
-export const useWebSocket = (token: string) => {
-	const [socket, setSocket] = createSignal<WebSocket | null>(null);
-
-	const connect = () => {
-		const address = resolveAddress();
-		const ws = new WebSocket(`ws://${address}/api/ws?token=${token}`);
-
-		ws.onopen = () => setSocket(ws);
-		ws.onclose = () => setSocket(null);
-		ws.onerror = (error) => console.error("WebSocket error:", error);
-
-		return ws;
-	};
-
-	const disconnect = () => {
-		const ws = socket();
-		if (ws) ws.close();
-	};
-
-	const sendMessage = (message: WsMessage) => {
-		const ws = socket();
-		if (ws) ws.send(JSON.stringify(message));
-	};
-
-	return {
-		isConnected: () => socket() !== null,
-		connect,
-		disconnect,
-		sendMessage,
-	};
-};
