@@ -16,11 +16,11 @@ import {
 	DirectoryNode,
 	Message,
 	useGetApi,
-	useWebSocket,
 	WsMessage,
 } from "../apiUtils.ts";
 import Button from "../components/Button.tsx";
 import { useAuth } from "../components/Auth.tsx";
+import { useWebSocket } from "../components/WebSocket.tsx";
 import SendHorizontal from "../assets/send-horizontal.svg";
 import Avatar from "../components/Avatar.tsx";
 import MessageSquareText from "../assets/message-square-text.svg";
@@ -96,7 +96,7 @@ const TypingIndicator: Component<{ users: string[] }> = (props) => {
 const Thread: Component = () => {
 	const params = useParams<{ id: string }>();
 	const { token } = useAuth();
-	const { connect, disconnect, sendMessage } = useWebSocket(token!);
+	const { onMessage, sendMessage } = useWebSocket();
 
 	const thread = createAsync<DirectoryNode[]>(() =>
 		useGetApi(token!, `/directory/${params.id}`)
@@ -143,39 +143,37 @@ const Thread: Component = () => {
 		return grouped;
 	});
 
-	onMount(() => {
-		const ws = connect();
+	const removeHandler = onMessage((event) => {
+		const message: WsMessage = JSON.parse(event.data);
 
-		ws.onmessage = (event) => {
-			const message: WsMessage = JSON.parse(event.data);
-
-			switch (message.type) {
-				case "message_created": {
-					if (message.directory_id !== Number(params.id)) return;
-					const { type: _type, ...messageData } = message;
-					setMessages((prev) => [...prev, messageData]);
-					break;
-				}
-				case "user_typing": {
-					if (message.thread_id !== Number(params.id)) return;
-					setTypingUsers((prev) =>
-						prev.includes(message.username) ? prev : [...prev, message.username]
-					);
-					break;
-				}
-				case "user_stopped_typing": {
-					if (message.thread_id !== Number(params.id)) return;
-					setTypingUsers((prev) =>
-						prev.filter((user) => user !== message.username)
-					);
-					break;
-				}
-				case "error":
-					console.error("WebSocket error:", message.message);
-					break;
+		switch (message.type) {
+			case "message_created": {
+				if (message.directory_id !== Number(params.id)) return;
+				const { type: _type, ...messageData } = message;
+				setMessages((prev) => [...prev, messageData]);
+				break;
 			}
-		};
+			case "user_typing": {
+				if (message.thread_id !== Number(params.id)) return;
+				setTypingUsers((prev) =>
+					prev.includes(message.username) ? prev : [...prev, message.username]
+				);
+				break;
+			}
+			case "user_stopped_typing": {
+				if (message.thread_id !== Number(params.id)) return;
+				setTypingUsers((prev) =>
+					prev.filter((user) => user !== message.username)
+				);
+				break;
+			}
+			case "error":
+				console.error("WebSocket error:", message.message);
+				break;
+		}
 	});
+
+	onCleanup(removeHandler);
 
 	createEffect((prevId: number | undefined) => {
 		const id = Number(params.id);
@@ -240,10 +238,7 @@ const Thread: Component = () => {
 		setNewMessage("");
 	};
 
-	onCleanup(() => {
-		stopTyping();
-		disconnect();
-	});
+	onCleanup(() => stopTyping());
 
 	let messagesContainer: HTMLDivElement | undefined;
 	const [scrollState, setScrollState] = createStore({

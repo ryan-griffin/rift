@@ -13,6 +13,7 @@ import Login from "./routes/Login.tsx";
 import AuthProvider from "./components/Auth.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
 import { generateThemeCSS, getTheme } from "./colorUtils.ts";
+import WebSocketProvider from "./components/WebSocket.tsx";
 
 const App = () => {
 	const theme = getTheme();
@@ -38,17 +39,19 @@ const App = () => {
 			<Route
 				component={(props) => (
 					<ProtectedRoute>
-						<div class={`h-full flex p-2 ${isTauri() ? "pt-0" : ""} gap-2`}>
-							<Splitter
-								a={<Nav />}
-								b={
-									<div class="h-full rounded-xl bg-background-50 dark:bg-background-900">
-										{props.children}
-									</div>
-								}
-							/>
-							<Members />
-						</div>
+						<WebSocketProvider>
+							<div class={`h-full flex p-2 ${isTauri() ? "pt-0" : ""} gap-2`}>
+								<Splitter
+									a={<Nav />}
+									b={
+										<div class="h-full rounded-xl bg-background-50 dark:bg-background-900">
+											{props.children}
+										</div>
+									}
+								/>
+								<Members />
+							</div>
+						</WebSocketProvider>
 					</ProtectedRoute>
 				)}
 			>
