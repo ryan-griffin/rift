@@ -14,6 +14,7 @@ import AuthProvider from "./components/Auth.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
 import { generateThemeCSS, getTheme } from "./colorUtils.ts";
 import WebSocketProvider from "./components/WebSocket.tsx";
+import NotificationService from "./components/NotificationService.tsx";
 
 const App = () => {
 	const theme = getTheme();
@@ -40,6 +41,9 @@ const App = () => {
 				component={(props) => (
 					<ProtectedRoute>
 						<WebSocketProvider>
+							<Show when={isTauri()}>
+								<NotificationService />
+							</Show>
 							<div class={`h-full flex p-2 ${isTauri() ? "pt-0" : ""} gap-2`}>
 								<Splitter
 									a={<Nav />}
