@@ -1,7 +1,7 @@
 import { Component, For, Suspense } from "solid-js";
 import { createAsync } from "@solidjs/router";
-import { useGetApi, User } from "../apiUtils.ts";
-import { useAuth } from "./Auth.tsx";
+import { User } from "../apiUtils.ts";
+import { useApi } from "./Api.tsx";
 import Avatar from "./Avatar.tsx";
 
 const UserCard: Component<{ user: User }> = (props) => {
@@ -14,8 +14,8 @@ const UserCard: Component<{ user: User }> = (props) => {
 };
 
 const Members: Component = () => {
-	const { token } = useAuth();
-	const users = createAsync<User[]>(() => useGetApi(token!, "/users"));
+	const { getApi } = useApi();
+	const users = createAsync<User[]>(() => getApi("/users"));
 
 	return (
 		<div class="w-1/4 flex flex-col p-4 gap-2 rounded-xl bg-background-50 dark:bg-background-900">

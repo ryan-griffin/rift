@@ -12,6 +12,7 @@ import Settings from "./routes/Settings.tsx";
 import Login from "./routes/Login.tsx";
 import AuthProvider from "./components/Auth.tsx";
 import ProtectedRoute from "./components/ProtectedRoute.tsx";
+import ApiProvider from "./components/Api.tsx";
 import { generateThemeCSS, getTheme } from "./colorUtils.ts";
 import WebSocketProvider from "./components/WebSocket.tsx";
 import NotificationService from "./components/NotificationService.tsx";
@@ -40,22 +41,24 @@ const App = () => {
 			<Route
 				component={(props) => (
 					<ProtectedRoute>
-						<WebSocketProvider>
-							<Show when={isTauri()}>
-								<NotificationService />
-							</Show>
-							<div class={`h-full flex p-2 ${isTauri() ? "pt-0" : ""} gap-2`}>
-								<Splitter
-									a={<Nav />}
-									b={
-										<div class="h-full rounded-xl bg-background-50 dark:bg-background-900">
-											{props.children}
-										</div>
-									}
-								/>
-								<Members />
-							</div>
-						</WebSocketProvider>
+						<ApiProvider>
+							<WebSocketProvider>
+								<Show when={isTauri()}>
+									<NotificationService />
+								</Show>
+								<div class={`h-full flex p-2 ${isTauri() ? "pt-0" : ""} gap-2`}>
+									<Splitter
+										a={<Nav />}
+										b={
+											<div class="h-full rounded-xl bg-background-50 dark:bg-background-900">
+												{props.children}
+											</div>
+										}
+									/>
+									<Members />
+								</div>
+							</WebSocketProvider>
+						</ApiProvider>
 					</ProtectedRoute>
 				)}
 			>

@@ -1,17 +1,19 @@
 import { Component, onCleanup } from "solid-js";
 import { useWebSocket } from "./WebSocket.tsx";
-import { DirectoryNode, useGetApi, WsMessage } from "../apiUtils.ts";
+import { DirectoryNode, WsMessage } from "../apiUtils.ts";
 import {
 	isPermissionGranted,
 	requestPermission,
 	sendNotification,
 } from "@tauri-apps/plugin-notification";
 import { useAuth } from "./Auth.tsx";
+import { useApi } from "./Api.tsx";
 import { createAsync, useParams } from "@solidjs/router";
 
 const NotificationService: Component = () => {
 	const { onMessage } = useWebSocket();
-	const { user, token } = useAuth();
+	const { user } = useAuth();
+	const { getApi } = useApi();
 	const params = useParams<{ id: string }>();
 
 	const permissionGranted = createAsync(async () => {
@@ -31,8 +33,7 @@ const NotificationService: Component = () => {
 			(message.directory_id != Number(params.id) || !document.hasFocus()) &&
 			message.author_username != user?.username
 		) {
-			const thread: DirectoryNode[] = await useGetApi(
-				token!,
+			const thread = await getApi<DirectoryNode[]>(
 				`/directory/${message.directory_id}`,
 			);
 

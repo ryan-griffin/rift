@@ -15,11 +15,10 @@ import {
 	CreateMessage,
 	DirectoryNode,
 	Message,
-	useGetApi,
 	WsMessage,
 } from "../apiUtils.ts";
 import Button from "../components/Button.tsx";
-import { useAuth } from "../components/Auth.tsx";
+import { useApi } from "../components/Api.tsx";
 import { useWebSocket } from "../components/WebSocket.tsx";
 import SendHorizontal from "../assets/send-horizontal.svg";
 import Avatar from "../components/Avatar.tsx";
@@ -95,15 +94,15 @@ const TypingIndicator: Component<{ users: string[] }> = (props) => {
 
 const Thread: Component = () => {
 	const params = useParams<{ id: string }>();
-	const { token } = useAuth();
+	const { getApi } = useApi();
 	const { onMessage, sendMessage } = useWebSocket();
 
 	const thread = createAsync<DirectoryNode[]>(() =>
-		useGetApi(token!, `/directory/${params.id}`)
+		getApi(`/directory/${params.id}`)
 	);
 
 	const initialMessages = createAsync<Message[]>(() =>
-		useGetApi(token!, `/thread/${params.id}`)
+		getApi(`/thread/${params.id}`)
 	);
 
 	const [messages, setMessages] = createSignal<Message[]>([]);

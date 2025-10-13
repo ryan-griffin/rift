@@ -1,4 +1,3 @@
-import { action, query } from "@solidjs/router";
 import { isServer } from "solid-js/web";
 
 export interface User {
@@ -38,31 +37,3 @@ export const resolveAddress = (): string =>
 	(import.meta.env.VITE_CONTAINER_ADDRESS && isServer)
 		? import.meta.env.VITE_CONTAINER_ADDRESS
 		: import.meta.env.VITE_ADDRESS;
-
-export const useGetApi = query(async (token: string, url: string) => {
-	const address = resolveAddress();
-	const res = await fetch(`http://${address}/api${url}`, {
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${token}`,
-		},
-	});
-	if (res.ok) return await res.json();
-}, "useGetApi");
-
-export const usePostApi = action(async (
-	token: string,
-	url: string,
-	body: unknown,
-) => {
-	const address = resolveAddress();
-	const res = await fetch(`http://${address}/api${url}`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: `Bearer ${token}`,
-		},
-		body: JSON.stringify(body),
-	});
-	if (res.ok) return await res.json();
-});

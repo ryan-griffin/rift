@@ -1,19 +1,19 @@
 import { Component, createEffect } from "solid-js";
 import { createAsync, useNavigate } from "@solidjs/router";
-import { DirectoryNode, useGetApi } from "../apiUtils.ts";
-import { useAuth } from "../components/Auth.tsx";
+import { DirectoryNode } from "../apiUtils.ts";
+import { useApi } from "../components/Api.tsx";
 import { getStorageItem } from "../storageUtils.ts";
 
 const Index: Component = () => {
 	const navigate = useNavigate();
-	const { token } = useAuth();
+	const { getApi } = useApi();
 
 	const lastThread = getStorageItem<number>("lastThread");
 	if (lastThread) {
 		navigate(`/thread/${lastThread}`);
 	} else {
 		const directory = createAsync<DirectoryNode[]>(() =>
-			useGetApi(token!, "/directory/1")
+			getApi("/directory/1")
 		);
 
 		createEffect(() => {
