@@ -320,7 +320,7 @@ const Thread: Component = () => {
 					<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
 						<div class="flex items-center bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[input:focus]:outline-2 -outline-offset-1 outline-accent-500">
 							<input
-								class="grow p-4 rounded-l-2xl outline-0"
+								class="grow p-4 rounded-l-2xl outline-0 placeholder-background-400 dark:placeholder-background-500"
 								ref={inputRef}
 								placeholder={`Message ${thread()?.[0].name}`}
 								value={newMessage()}

@@ -90,16 +90,16 @@ const generateBackgroundPalette = (
 	// Create neutral shades from white to black with varying color hints
 	const shadeValues = {
 		"50": { grayValue: 255, intensity: 0.05 },
-		"100": { grayValue: 245, intensity: 0.1 },
-		"200": { grayValue: 235, intensity: 0.1 },
-		"300": { grayValue: 225, intensity: 0.1 },
-		"400": { grayValue: 185, intensity: 0.1 },
-		"500": { grayValue: 125, intensity: 0.05 },
-		"600": { grayValue: 100, intensity: 0.05 },
-		"700": { grayValue: 75, intensity: 0.05 },
-		"800": { grayValue: 50, intensity: 0.05 },
-		"900": { grayValue: 25, intensity: 0.05 },
-		"950": { grayValue: 0, intensity: 0.1 },
+		"100": { grayValue: 245, intensity: 0.05 },
+		"200": { grayValue: 225, intensity: 0.05 },
+		"300": { grayValue: 205, intensity: 0.05 },
+		"400": { grayValue: 185, intensity: 0.05 },
+		"500": { grayValue: 105, intensity: 0.03 },
+		"600": { grayValue: 85, intensity: 0.03 },
+		"700": { grayValue: 65, intensity: 0.03 },
+		"800": { grayValue: 45, intensity: 0.03 },
+		"900": { grayValue: 25, intensity: 0.03 },
+		"950": { grayValue: 15, intensity: 0.03 },
 	};
 
 	for (
@@ -124,7 +124,7 @@ const generateTheme = (baseColor: string): Theme => ({
 const setBaseColor = (baseColor: string) =>
 	setStorageItem("user-base-color", baseColor);
 
-const getBaseColor = () => {
+export const getBaseColor = () => {
 	const baseColor = getStorageItem<string>("user-base-color");
 	if (baseColor) return baseColor;
 
