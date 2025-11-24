@@ -1,0 +1,17 @@
+{
+	"formatter": "language_server",
+	"languages": {
+		"TypeScript": {
+			"language_servers": [
+				"deno"
+			]
+		},
+		"TSX": {
+			"language_servers": [
+				"deno",
+				"tailwindcss-language-server",
+				"! vtsls"
+			]
+		}
+	}
+}
