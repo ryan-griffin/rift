@@ -339,6 +339,9 @@ const Thread: Component = () => {
 										e.preventDefault();
 										handleSend();
 									}
+									if (e.key === "Escape") {
+										e.currentTarget.blur();
+									}
 								}}
 								onBlur={stopTyping}
 							/>
