@@ -24,8 +24,24 @@ import SendHorizontal from "../assets/send-horizontal.svg";
 import Avatar from "../components/Avatar.tsx";
 import MessageSquareText from "../assets/message-square-text.svg";
 import { setStorageItem } from "../storageUtils.ts";
+import markdownit from "markdown-it";
 
 const MessageCard: Component<{ messages: Message[] }> = (props) => {
+	const md = markdownit({
+		breaks: true,
+		linkify: true,
+		typographer: true,
+	});
+
+	const mdClasses = {
+		"[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-bold [&_h1]:text-5xl [&_h2]:text-4xl [&_h3]:text-3xl [&_h4]:text-2xl [&_h5]:text-xl":
+			true,
+		"[&_a]:text-accent-500 [&_a:hover]:underline": true,
+		"[&_ol,&_ul]:pl-6 [&_ol>li,&_ul>li]:pl-1": true,
+		"[&_ol]:list-decimal [&_ul]:list-disc": true,
+		"[&_hr]:text-background-400 dark:[&_hr]:text-background-500": true,
+	};
+
 	return (
 		<div class="flex gap-4">
 			<Avatar
@@ -42,7 +58,12 @@ const MessageCard: Component<{ messages: Message[] }> = (props) => {
 					</p>
 				</div>
 				<For each={props.messages}>
-					{(message) => <p class="whitespace-pre-wrap">{message.content}</p>}
+					{(message) => (
+						<div
+							classList={mdClasses}
+							innerHTML={md.render(message.content)}
+						/>
+					)}
 				</For>
 			</div>
 		</div>
