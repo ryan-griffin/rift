@@ -42,7 +42,7 @@ const MessageCard: Component<{ messages: Message[] }> = (props) => {
 					</p>
 				</div>
 				<For each={props.messages}>
-					{(message) => <p>{message.content}</p>}
+					{(message) => <p class="whitespace-pre-wrap">{message.content}</p>}
 				</For>
 			</div>
 		</div>
@@ -219,7 +219,7 @@ const Thread: Component = () => {
 
 	const [newMessage, setNewMessage] = createSignal("");
 	const handleSend = () => {
-		if (!newMessage()) return;
+		if (!newMessage().trim()) return;
 
 		stopTyping();
 
@@ -235,6 +235,8 @@ const Thread: Component = () => {
 		});
 
 		setNewMessage("");
+
+		if (inputRef) inputRef.style.height = "auto";
 	};
 
 	onCleanup(() => stopTyping());
@@ -264,7 +266,7 @@ const Thread: Component = () => {
 		});
 	});
 
-	let inputRef: HTMLInputElement | undefined;
+	let inputRef: HTMLTextAreaElement | undefined;
 	const handleGlobalKeydown = (e: KeyboardEvent) => {
 		if (document.activeElement === inputRef) return;
 		if (
@@ -318,18 +320,22 @@ const Thread: Component = () => {
 						</div>
 					</div>
 					<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
-						<div class="flex items-center bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[input:focus]:outline-2 -outline-offset-1 outline-accent-500">
-							<input
-								class="grow p-4 rounded-l-2xl outline-0 placeholder-background-400 dark:placeholder-background-500"
+						<div class="flex items-end bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[textarea:focus]:outline-2 -outline-offset-1 outline-accent-500">
+							<textarea
+								class="grow p-4 rounded-l-2xl outline-0 placeholder-background-400 dark:placeholder-background-500 resize-none max-h-48"
+								rows={1}
 								ref={inputRef}
 								placeholder={`Message ${thread()?.[0].name}`}
 								value={newMessage()}
 								onInput={(e) => {
-									setNewMessage(e.currentTarget.value);
-									e.currentTarget.value.trim() ? startTyping() : stopTyping();
+									const textarea = e.currentTarget;
+									setNewMessage(textarea.value);
+									textarea.value.trim() ? startTyping() : stopTyping();
+									textarea.style.height = "auto";
+									textarea.style.height = `${textarea.scrollHeight}px`;
 								}}
 								onKeyDown={(e) => {
-									if (e.key === "Enter") {
+									if (e.key === "Enter" && !e.shiftKey) {
 										e.preventDefault();
 										handleSend();
 									}
@@ -337,7 +343,7 @@ const Thread: Component = () => {
 								onBlur={stopTyping}
 							/>
 							<Button
-								className="mr-2"
+								className="m-2 ml-0"
 								type="submit"
 								variant="suggested"
 								icon={<SendHorizontal />}
