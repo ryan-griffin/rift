@@ -40,6 +40,7 @@ const MessageCard: Component<{ messages: Message[] }> = (props) => {
 		"[&_ol,&_ul]:pl-6 [&_ol>li,&_ul>li]:pl-1": true,
 		"[&_ol]:list-decimal [&_ul]:list-disc": true,
 		"[&_hr]:text-background-400 dark:[&_hr]:text-background-500": true,
+		"[&_img]:rounded-xl": true,
 	};
 
 	return (
@@ -324,7 +325,7 @@ const Thread: Component = () => {
 						<p class="font-bold">{thread()?.[0].name}</p>
 					</header>
 					<div
-						class="flex flex-col p-4 pb-27 h-[calc(100%-3.5rem)] overflow-y-auto"
+						class="flex flex-col p-4 pb-26 h-[calc(100%-3.5rem)] overflow-y-auto"
 						style={{
 							"mask-image": !scrollState.isTop
 								? "linear-gradient(to bottom, transparent 0%, black 5%, black 100%)"
@@ -340,7 +341,7 @@ const Thread: Component = () => {
 							</For>
 						</div>
 					</div>
-					<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 gap-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:to-transparent before:-z-10 before:rounded-b-xl">
+					<div class="absolute z-10 bottom-0 left-0 right-0 flex flex-col px-4 pb-1 before:absolute before:inset-0 before:bg-gradient-to-t before:from-background-50 dark:before:from-background-900 before:via-background-50/85 dark:before:via-background-900/85 before:to-transparent before:-z-10 before:rounded-b-xl">
 						<div class="flex items-end bg-background-100 dark:bg-background-800 rounded-2xl shadow-sm has-[textarea:focus]:outline-2 -outline-offset-1 outline-accent-500">
 							<textarea
 								class="grow p-4 rounded-l-2xl outline-0 placeholder-background-400 dark:placeholder-background-500 resize-none max-h-48"
