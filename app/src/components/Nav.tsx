@@ -11,7 +11,7 @@ const Nav: Component = () => {
 	const { user } = useAuth();
 
 	return (
-		<nav class="relative h-full">
+		<nav class="relative flex-1 min-w-65">
 			<Directory />
 			<div class="absolute bottom-0 w-full flex p-2 gap-2 items-center justify-between rounded-2xl bg-background-50 dark:bg-background-900">
 				<div class="flex gap-2 items-center">
