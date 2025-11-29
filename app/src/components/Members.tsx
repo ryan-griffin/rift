@@ -18,7 +18,7 @@ const Members: Component = () => {
 	const users = createAsync<User[]>(() => getApi("/users"));
 
 	return (
-		<div class="w-1/4 flex flex-col p-4 gap-2 rounded-xl bg-background-50 dark:bg-background-900">
+		<div class="min-w-60 flex flex-col p-4 gap-2 overflow-y-auto rounded-xl bg-background-50 dark:bg-background-900">
 			<p class="font-bold text-sm text-background-400 dark:text-background-500">
 				Members
 			</p>

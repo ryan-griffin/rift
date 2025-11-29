@@ -3,7 +3,6 @@ import { Show } from "solid-js";
 import { Route, Router } from "@solidjs/router";
 import { isTauri } from "@tauri-apps/api/core";
 import WindowControls from "./components/WindowControls.tsx";
-import Splitter from "./components/Spiltter.tsx";
 import Nav from "./components/Nav.tsx";
 import Index from "./routes/Index.tsx";
 import Members from "./components/Members.tsx";
@@ -46,15 +45,11 @@ const App = () => {
 								<Show when={isTauri()}>
 									<NotificationService />
 								</Show>
-								<div class={`h-full flex p-2 ${isTauri() ? "pt-0" : ""} gap-2`}>
-									<Splitter
-										a={<Nav />}
-										b={
-											<div class="h-full rounded-xl bg-background-50 dark:bg-background-900">
-												{props.children}
-											</div>
-										}
-									/>
+								<div class={`h-full flex p-2 gap-2 ${isTauri() ? "pt-0" : ""}`}>
+									<Nav />
+									<div class="flex-3 rounded-xl bg-background-50 dark:bg-background-900">
+										{props.children}
+									</div>
 									<Members />
 								</div>
 							</WebSocketProvider>
