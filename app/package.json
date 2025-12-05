@@ -1,19 +1,19 @@
 {
 	"type": "module",
 	"dependencies": {
-		"@ark-ui/solid": "^5.14.0",
-		"@solidjs/router": "^0.15.3",
-		"dotenv": "^16.5.0",
+		"@ark-ui/solid": "^5.29.1",
+		"@solidjs/router": "^0.15.4",
+		"dotenv": "^16.6.1",
 		"markdown-it": "^14.1.0",
-		"solid-js": "^1.9.7",
-		"@solidjs/start": "^1.1.5",
-		"tailwindcss": "^4.1.10",
-		"@tailwindcss/vite": "^4.1.10",
-		"vinxi": "^0.5.7",
-		"@tauri-apps/api": "^2.7.0",
-		"@tauri-apps/cli": "^2.7.1",
+		"solid-js": "^1.9.10",
+		"@solidjs/start": "^1.2.0",
+		"tailwindcss": "^4.1.17",
+		"@tailwindcss/vite": "^4.1.17",
+		"vinxi": "^0.5.8",
+		"@tauri-apps/api": "^2.9.1",
+		"@tauri-apps/cli": "^2.9.5",
 		"@tauri-apps/plugin-notification": "2.3.0",
-		"@tauri-apps/plugin-opener": "^2.4.0",
+		"@tauri-apps/plugin-opener": "^2.5.2",
 		"vite-plugin-solid-svg": "^0.8.1"
 	}
 }
