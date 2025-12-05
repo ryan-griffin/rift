@@ -9,21 +9,21 @@ resolver = "3"
 
 [dependencies]
 migration = { path = "migration" }
-tokio = { version = "1.45.1", features = ["full"] }
-axum = { version = "0.8.4", features = ["ws"] }
-sea-orm = { version = "1.1.12", features = [
+tokio = { version = "1.48.0", features = ["full"] }
+axum = { version = "0.8.7", features = ["ws"] }
+sea-orm = { version = "1.1.19", features = [
 	"sqlx-postgres",
 	"runtime-tokio-native-tls",
 	"macros",
 ] }
 dotenvy = "0.15.7"
-serde = { version = "1.0.219", features = ["derive"] }
-serde_json = "1.0.140"
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.145"
 jsonwebtoken = "9.3.1"
-chrono = "0.4.41"
-tower-http = { version = "0.6.6", features = ["cors"] }
+chrono = "0.4.42"
+tower-http = { version = "0.6.7", features = ["cors"] }
 futures-util = "0.3.31"
-reqwest = { version = "0.12.19", default-features = false, features = [
+reqwest = { version = "0.12.24", default-features = false, features = [
 	"native-tls",
 ] }
-bcrypt = "0.17.0"
+bcrypt = "0.17.1"
