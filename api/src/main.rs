@@ -41,9 +41,9 @@ async fn main() {
 	let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
 	let api_host = env::var("API_HOST").expect("API_HOST must be set");
 	let api_port = env::var("API_PORT").expect("API_PORT must be set");
-	let host = env::var("HOST").expect("HOST must be set");
-	let port = env::var("PORT")
-		.expect("PORT must be set")
+	let app_host = env::var("APP_HOST").expect("APP_HOST must be set");
+	let app_port = env::var("APP_PORT")
+		.expect("APP_PORT must be set")
 		.parse::<u16>()
 		.unwrap();
 
@@ -72,7 +72,7 @@ async fn main() {
 		.route("/api/login", post(login))
 		.route("/api/signup", post(signup))
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
-			proxy(uri, host, port, headers)
+			proxy(uri, app_host, app_port, headers)
 		}))
 		.layer(cors)
 		.with_state(AppState { conn, ws_state });

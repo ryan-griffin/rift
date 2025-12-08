@@ -5,14 +5,18 @@
     "npm:@solidjs/router@~0.15.4": "0.15.4_solid-js@1.9.10__seroval@1.3.2",
     "npm:@solidjs/start@^1.2.0": "1.2.0_vinxi@0.5.8__@babel+core@7.28.5_seroval@1.3.2_solid-js@1.9.10__seroval@1.3.2",
     "npm:@tailwindcss/vite@^4.1.17": "4.1.17_vite@6.4.1__picomatch@4.0.3",
+    "npm:@tauri-apps/api@*": "2.9.1",
     "npm:@tauri-apps/api@^2.9.1": "2.9.1",
     "npm:@tauri-apps/cli@^2.9.5": "2.9.5",
+    "npm:@tauri-apps/plugin-notification@*": "2.3.0",
     "npm:@tauri-apps/plugin-notification@2.3.0": "2.3.0",
     "npm:@tauri-apps/plugin-opener@^2.5.2": "2.5.2",
-    "npm:dotenv@^16.6.1": "16.6.1",
+    "npm:markdown-it@*": "14.1.0",
     "npm:markdown-it@^14.1.0": "14.1.0",
+    "npm:solid-js@*": "1.9.10_seroval@1.3.2",
     "npm:solid-js@^1.9.10": "1.9.10_seroval@1.3.2",
     "npm:tailwindcss@^4.1.17": "4.1.17",
+    "npm:vinxi@*": "0.5.8_@babel+core@7.28.5",
     "npm:vinxi@~0.5.8": "0.5.8_@babel+core@7.28.5",
     "npm:vite-plugin-solid-svg@~0.8.1": "0.8.1_solid-js@1.9.10__seroval@1.3.2_vite@6.4.1__picomatch@4.0.3"
   },
@@ -2252,7 +2256,7 @@
         "chokidar",
         "confbox@0.2.2",
         "defu",
-        "dotenv@17.2.3",
+        "dotenv",
         "exsolve",
         "giget",
         "jiti@2.6.1",
@@ -2533,9 +2537,6 @@
       "dependencies": [
         "type-fest@5.3.0"
       ]
-    },
-    "dotenv@16.6.1": {
-      "integrity": "sha512-uBq4egWHTcTt33a72vpSG0z3HnPuIl6NqYcTrKEg2azoEyl2hpW0zqlxysq2pK9HlDIHyHyakeYaYnSAwd8bow=="
     },
     "dotenv@17.2.3": {
       "integrity": "sha512-JVUnt+DUIzu87TABbhPmNfVdBDt18BLOWjMUFJMSi/Qqg7NTYtabbvSNJGOJ7afbRuv9D/lngizHtP7QyLQ+9w=="
@@ -4561,7 +4562,6 @@
         "npm:@tauri-apps/cli@^2.9.5",
         "npm:@tauri-apps/plugin-notification@2.3.0",
         "npm:@tauri-apps/plugin-opener@^2.5.2",
-        "npm:dotenv@^16.6.1",
         "npm:markdown-it@^14.1.0",
         "npm:solid-js@^1.9.10",
         "npm:tailwindcss@^4.1.17",

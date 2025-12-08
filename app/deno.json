@@ -1,15 +1,20 @@
 {
 	"nodeModulesDir": "auto",
 	"tasks": {
-		"dev": "vinxi dev",
-		"build": "vinxi build",
-		"start": "deno run --allow-env --allow-read --allow-net --env-file npm:vinxi start",
+		"dev": "deno run -A --env-file set-env.ts dev",
+		"build": "deno run -A --env-file set-env.ts build",
+		"start": "deno run -A --env-file set-env.ts start",
 		"tauri": "tauri"
 	},
 	"compilerOptions": {
 		"jsx": "react-jsx",
 		"jsxImportSource": "solid-js",
-		"lib": ["DOM", "DOM.Iterable", "ESNext"]
+		"lib": [
+			"DOM",
+			"DOM.Iterable",
+			"ESNext",
+			"deno.ns"
+		]
 	},
 	"fmt": {
 		"useTabs": true

@@ -34,6 +34,6 @@ export type WsMessage =
 	| { type: "error"; message: string };
 
 export const resolveAddress = (): string =>
-	(import.meta.env.VITE_CONTAINER_ADDRESS && isServer)
-		? import.meta.env.VITE_CONTAINER_ADDRESS
-		: import.meta.env.VITE_ADDRESS;
+	(import.meta.env.VITE_API_CONTAINER_ADDRESS && isServer)
+		? import.meta.env.VITE_API_CONTAINER_ADDRESS
+		: import.meta.env.VITE_API_ADDRESS;
