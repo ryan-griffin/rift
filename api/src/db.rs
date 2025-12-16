@@ -90,6 +90,22 @@ pub async fn create_message(
 		.await?
 	{
 		Some(directory) if directory.r#type == "thread" => {
+			if let Some(parent_id) = message.parent_id {
+				let parent = messages::Entity::find_by_id(parent_id)
+					.one(db)
+					.await?
+					.ok_or(DbErr::RecordNotFound(format!(
+						"Parent message with id {parent_id} not found"
+					)))?;
+
+				if parent.directory_id != message.directory_id {
+					return Err(DbErr::Custom(format!(
+						"Parent message {parent_id} belongs to directory {}, not {}",
+						parent.directory_id, message.directory_id
+					)));
+				}
+			}
+
 			messages::ActiveModel {
 				author_username: Set(author_username),
 				content: Set(message.content),
