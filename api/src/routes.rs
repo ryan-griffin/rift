@@ -79,13 +79,23 @@ pub async fn create_message(
 	Extension(username): Extension<String>,
 	Json(message): Json<Message>,
 ) -> Result<Json<Message>> {
-	match db::create_message(&app_state.conn, username, message).await {
-		Ok(created_message) => Ok(Json(created_message)),
-		Err(err) => {
-			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-		}
-	}
+	let created_message = db::create_message(&app_state.conn, username, message)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	app_state
+		.ws_state
+		.broadcast("messaging", "message_created", &created_message)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	Ok(Json(created_message))
 }
 
 pub async fn login(
