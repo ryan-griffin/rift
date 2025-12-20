@@ -15,7 +15,7 @@ import {
 	CreateMessage,
 	DirectoryNode,
 	Message,
-	WsMessage,
+	WsServerMessage,
 } from "../apiUtils.ts";
 import Button from "../components/Button.tsx";
 import { useApi } from "../components/Api.tsx";
@@ -263,34 +263,35 @@ const Thread: Component = () => {
 	const [typingUsers, setTypingUsers] = createSignal<string[]>([]);
 
 	const removeHandler = onMessage((event) => {
-		const message: WsMessage = JSON.parse(event.data);
+		const env: WsServerMessage = JSON.parse(event.data);
 
-		switch (message.type) {
-			case "message_created": {
-				if (message.directory_id !== Number(params.id)) return;
-				const { type: _type, ...messageData } = message;
-				setMessagesState(
-					produce((state) => appendMessage(state, messageData)),
-				);
-				break;
+		if (env.module === "messaging") {
+			switch (env.type) {
+				case "message_created": {
+					const message = env.payload;
+					if (message.directory_id !== Number(params.id)) return;
+					setMessagesState(
+						produce((state) => appendMessage(state, message)),
+					);
+					break;
+				}
+				case "user_typing": {
+					const payload = env.payload;
+					if (payload.thread_id !== Number(params.id)) return;
+					setTypingUsers((prev) =>
+						prev.includes(payload.username) ? prev : [...prev, payload.username]
+					);
+					break;
+				}
+				case "user_stopped_typing": {
+					const payload = env.payload;
+					if (payload.thread_id !== Number(params.id)) return;
+					setTypingUsers((prev) =>
+						prev.filter((user) => user !== payload.username)
+					);
+					break;
+				}
 			}
-			case "user_typing": {
-				if (message.thread_id !== Number(params.id)) return;
-				setTypingUsers((prev) =>
-					prev.includes(message.username) ? prev : [...prev, message.username]
-				);
-				break;
-			}
-			case "user_stopped_typing": {
-				if (message.thread_id !== Number(params.id)) return;
-				setTypingUsers((prev) =>
-					prev.filter((user) => user !== message.username)
-				);
-				break;
-			}
-			case "error":
-				console.error("WebSocket error:", message.message);
-				break;
 		}
 	});
 
@@ -310,8 +311,9 @@ const Thread: Component = () => {
 		if (!isTyping()) {
 			setIsTyping(true);
 			sendMessage({
+				module: "messaging",
 				type: "typing",
-				thread_id: Number(params.id),
+				payload: { thread_id: Number(params.id) },
 			});
 		}
 
@@ -328,8 +330,9 @@ const Thread: Component = () => {
 		if (isTyping()) {
 			setIsTyping(false);
 			sendMessage({
+				module: "messaging",
 				type: "stop_typing",
-				thread_id: Number(params.id),
+				payload: { thread_id: Number(params.id) },
 			});
 		}
 
@@ -364,8 +367,9 @@ const Thread: Component = () => {
 		stopTyping();
 
 		sendMessage({
+			module: "messaging",
 			type: "create_message",
-			...newMessage,
+			payload: newMessage,
 		});
 
 		setNewMessage({

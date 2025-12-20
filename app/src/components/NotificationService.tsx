@@ -1,6 +1,6 @@
 import { Component, onCleanup } from "solid-js";
 import { useWebSocket } from "./WebSocket.tsx";
-import { DirectoryNode, WsMessage } from "../apiUtils.ts";
+import { DirectoryNode, Message, WsServerMessage } from "../apiUtils.ts";
 import {
 	isPermissionGranted,
 	requestPermission,
@@ -26,10 +26,13 @@ const NotificationService: Component = () => {
 	});
 
 	const removeHandler = onMessage(async (event) => {
-		const message: WsMessage = JSON.parse(event.data);
+		const env: WsServerMessage = JSON.parse(event.data);
+		if (env.module !== "messaging" || env.type !== "message_created") return;
+
+		const message = env.payload as Message;
 
 		if (
-			permissionGranted() && message.type === "message_created" &&
+			permissionGranted() &&
 			(message.directory_id != Number(params.id) || !document.hasFocus()) &&
 			message.author_username != user?.username
 		) {

@@ -7,12 +7,12 @@ import {
 	onMount,
 	useContext,
 } from "solid-js";
-import { resolveAddress, WsMessage } from "../apiUtils.ts";
+import { resolveAddress, WsClientMessage } from "../apiUtils.ts";
 import { useAuth } from "./Auth.tsx";
 
 interface WebSocketContextType {
 	onMessage: (handler: (event: MessageEvent) => void) => () => void;
-	sendMessage: (message: WsMessage) => void;
+	sendMessage: (message: WsClientMessage) => void;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>();
@@ -54,7 +54,7 @@ const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
 		return () => messageHandlers.delete(handler);
 	};
 
-	const sendMessage = (message: WsMessage) => {
+	const sendMessage = (message: WsClientMessage) => {
 		const ws = socket();
 		if (ws) ws.send(JSON.stringify(message));
 	};

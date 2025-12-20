@@ -24,14 +24,44 @@ export interface Message extends CreateMessage {
 	created_at: string;
 }
 
-export type WsMessage =
-	| { type: "typing"; thread_id: number }
-	| { type: "stop_typing"; thread_id: number }
-	| ({ type: "create_message" } & CreateMessage)
-	| { type: "user_typing"; username: string; thread_id: number }
-	| { type: "user_stopped_typing"; username: string; thread_id: number }
-	| ({ type: "message_created" } & Message)
-	| { type: "error"; message: string };
+export type WsClientMessage =
+	| {
+		module: "messaging";
+		type: "typing";
+		payload: { thread_id: number };
+	}
+	| {
+		module: "messaging";
+		type: "stop_typing";
+		payload: { thread_id: number };
+	}
+	| {
+		module: "messaging";
+		type: "create_message";
+		payload: CreateMessage;
+	};
+
+export type WsServerMessage =
+	| {
+		module: "messaging";
+		type: "user_typing";
+		payload: { username: string; thread_id: number };
+	}
+	| {
+		module: "messaging";
+		type: "user_stopped_typing";
+		payload: { username: string; thread_id: number };
+	}
+	| {
+		module: "messaging";
+		type: "message_created";
+		payload: Message;
+	}
+	| {
+		module: "system";
+		type: "error";
+		payload: string;
+	};
 
 export const resolveAddress = (): string =>
 	(import.meta.env.VITE_API_CONTAINER_ADDRESS && isServer)
