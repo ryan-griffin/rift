@@ -58,6 +58,11 @@ export type WsServerMessage =
 		payload: Message;
 	}
 	| {
+		module: "users";
+		type: "user_created";
+		payload: User;
+	}
+	| {
 		module: "system";
 		type: "error";
 		payload: string;

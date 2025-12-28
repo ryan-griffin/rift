@@ -134,21 +134,24 @@ pub async fn signup(
 		}
 	};
 
-	let created_user = match db::create_user(&app_state.conn, user).await {
-		Ok(created_user) => created_user,
-		Err(err) => {
-			eprintln!("{err}");
-			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
-		}
-	};
+	let created_user = db::create_user(&app_state.conn, user).await.map_err(|e| {
+		eprintln!("{e}");
+		StatusCode::INTERNAL_SERVER_ERROR
+	})?;
 
-	let token = match generate_token(&created_user.username) {
-		Ok(token) => token,
-		Err(err) => {
-			eprintln!("{err}");
-			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
-		}
-	};
+	app_state
+		.ws_state
+		.broadcast("users", "user_created", &created_user)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	let token = generate_token(&created_user.username).map_err(|e| {
+		eprintln!("{e}");
+		StatusCode::INTERNAL_SERVER_ERROR
+	})?;
 
 	Ok(Json(AuthResponse {
 		user: created_user,

@@ -1,4 +1,5 @@
 mod messaging;
+mod users;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures_util::{SinkExt, StreamExt, stream::SplitSink};
@@ -91,6 +92,7 @@ fn module_registry() -> HashMap<&'static str, Arc<dyn WsModule>> {
 	let mut map: HashMap<&'static str, Arc<dyn WsModule>> = HashMap::new();
 
 	map.insert("messaging", Arc::new(messaging::MessagingModule));
+	map.insert("users", Arc::new(users::UsersModule));
 
 	map
 }
