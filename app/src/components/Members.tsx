@@ -1,8 +1,9 @@
-import { Component, For, Suspense } from "solid-js";
-import { createAsync } from "@solidjs/router";
-import { User } from "../apiUtils.ts";
+import { Component, For, onCleanup, Suspense } from "solid-js";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
+import { User, WsServerMessage } from "../apiUtils.ts";
 import { useApi } from "./Api.tsx";
 import Avatar from "./Avatar.tsx";
+import { useWebSocket } from "./WebSocket.tsx";
 
 const UserCard: Component<{ user: User }> = (props) => {
 	return (
@@ -15,15 +16,33 @@ const UserCard: Component<{ user: User }> = (props) => {
 
 const Members: Component = () => {
 	const { getApi } = useApi();
-	const users = createAsync<User[]>(() => getApi("/users"));
+	const { onMessage } = useWebSocket();
+	const queryClient = useQueryClient();
+
+	const users = useQuery(() => ({
+		queryKey: ["users"],
+		queryFn: () => getApi<User[]>("/users"),
+	}));
+
+	const removeHandler = onMessage((event) => {
+		const env: WsServerMessage = JSON.parse(event.data);
+
+		if (env.module === "users" && env.type === "user_created") {
+			queryClient.setQueryData<User[]>(
+				["users"],
+				(prev) => [...(prev ?? []), env.payload],
+			);
+		}
+	});
+	onCleanup(removeHandler);
 
 	return (
 		<div class="min-w-60 flex flex-col p-4 gap-2 overflow-y-auto rounded-xl bg-background-50 dark:bg-background-900">
 			<p class="font-bold text-sm text-background-400 dark:text-background-500">
 				Members
 			</p>
-			<Suspense fallback={<p>Loading...</p>}>
-				<For each={users()}>
+			<Suspense>
+				<For each={users.data}>
 					{(user) => <UserCard user={user} />}
 				</For>
 			</Suspense>
