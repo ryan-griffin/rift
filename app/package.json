@@ -3,6 +3,7 @@
 	"dependencies": {
 		"@ark-ui/solid": "^5.29.1",
 		"@solidjs/router": "^0.15.4",
+		"@tanstack/solid-query": "^5.90.15",
 		"markdown-it": "^14.1.0",
 		"solid-js": "^1.9.10",
 		"@solidjs/start": "^1.2.0",
