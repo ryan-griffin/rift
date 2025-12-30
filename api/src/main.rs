@@ -29,7 +29,7 @@ pub struct AppState {
 	pub ws_state: WsState,
 }
 
-static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(|| Client::new());
+static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 
 #[tokio::main]
 async fn main() {
@@ -61,13 +61,14 @@ async fn main() {
 		.route("/api/users", get(get_users))
 		.route("/api/users/{username}", get(get_user))
 		.route("/api/directory/{id}", get(get_directory))
-		.route("/api/thread/{id}", get(get_thread))
+		.route("/api/directory", post(create_directory))
+		.route("/api/thread/{id}", get(get_message_thread))
 		.route("/api/message/{id}", get(get_message))
 		.route("/api/message", post(create_message))
 		.route("/api/ws", get(ws_handler))
 		.route_layer(middleware::from_fn(auth_middleware))
-		.route("/api/login", post(login))
 		.route("/api/signup", post(signup))
+		.route("/api/login", post(login))
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
 			proxy(uri, app_host, app_port, headers)
 		}))
@@ -88,10 +89,10 @@ async fn proxy(uri: Uri, host: String, port: u16, headers: HeaderMap) -> Result<
 	let mut request = HTTP_CLIENT.get(&proxy_url);
 
 	for (key, value) in headers.iter() {
-		if key != "host" {
-			if let Ok(header_value) = value.to_str() {
-				request = request.header(key.as_str(), header_value);
-			}
+		if key != "host"
+			&& let Ok(header_value) = value.to_str()
+		{
+			request = request.header(key.as_str(), header_value);
 		}
 	}
 

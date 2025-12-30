@@ -27,7 +27,7 @@ const NotificationService: Component = () => {
 
 	const removeHandler = onMessage(async (event) => {
 		const env: WsServerMessage = JSON.parse(event.data);
-		if (env.module !== "messaging" || env.type !== "message_created") return;
+		if (env.module !== "messages" || env.type !== "message_created") return;
 
 		const message = env.payload as Message;
 

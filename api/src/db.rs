@@ -63,7 +63,21 @@ pub async fn get_directory(db: &DatabaseConnection, id: i32) -> Result<Vec<Direc
 	Ok(results)
 }
 
-pub async fn get_thread(db: &DatabaseConnection, id: i32) -> Result<Vec<Message>, DbErr> {
+pub async fn create_directory(
+	db: &DatabaseConnection,
+	directory: Directory,
+) -> Result<Directory, DbErr> {
+	directory::ActiveModel {
+		name: Set(directory.name),
+		r#type: Set(directory.r#type),
+		parent_id: Set(directory.parent_id),
+		..Default::default()
+	}
+	.insert(db)
+	.await
+}
+
+pub async fn get_message_thread(db: &DatabaseConnection, id: i32) -> Result<Vec<Message>, DbErr> {
 	messages::Entity::find()
 		.filter(messages::Column::DirectoryId.eq(id))
 		.all(db)

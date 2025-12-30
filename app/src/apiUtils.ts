@@ -26,34 +26,34 @@ export interface Message extends CreateMessage {
 
 export type WsClientMessage =
 	| {
-		module: "messaging";
+		module: "messages";
 		type: "typing";
 		payload: { thread_id: number };
 	}
 	| {
-		module: "messaging";
+		module: "messages";
 		type: "stop_typing";
 		payload: { thread_id: number };
 	}
 	| {
-		module: "messaging";
+		module: "messages";
 		type: "create_message";
 		payload: CreateMessage;
 	};
 
 export type WsServerMessage =
 	| {
-		module: "messaging";
+		module: "messages";
 		type: "user_typing";
 		payload: { username: string; thread_id: number };
 	}
 	| {
-		module: "messaging";
+		module: "messages";
 		type: "user_stopped_typing";
 		payload: { username: string; thread_id: number };
 	}
 	| {
-		module: "messaging";
+		module: "messages";
 		type: "message_created";
 		payload: Message;
 	}
