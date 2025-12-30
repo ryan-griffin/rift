@@ -1,5 +1,5 @@
 import { Component, createContext, JSX, useContext } from "solid-js";
-import { action, query } from "@solidjs/router";
+import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
 import { useAuth } from "./Auth.tsx";
 import { resolveAddress } from "../apiUtils.ts";
 
@@ -27,6 +27,7 @@ const ApiProvider: Component<{ children: JSX.Element }> = (
 	props,
 ) => {
 	const { token, logout } = useAuth();
+	const queryClient = new QueryClient();
 
 	const api = async <T,>(
 		method: "GET" | "POST" = "GET",
@@ -51,15 +52,15 @@ const ApiProvider: Component<{ children: JSX.Element }> = (
 		return await res.json();
 	};
 
-	const getApi = query((url: string) => api("GET", url), "getApi") as GetApi;
+	const getApi = <T,>(url: string) => api<T>("GET", url);
 
-	const postApi = action((url: string, body: unknown) =>
-		api("POST", url, body)
-	) as PostApi;
+	const postApi = <T,>(url: string, body: unknown) => api<T>("POST", url, body);
 
 	return (
 		<ApiContext.Provider value={{ getApi, postApi }}>
-			{props.children}
+			<QueryClientProvider client={queryClient}>
+				{props.children}
+			</QueryClientProvider>
 		</ApiContext.Provider>
 	);
 };

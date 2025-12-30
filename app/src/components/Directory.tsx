@@ -1,5 +1,6 @@
 import { Component, For, Show, Suspense } from "solid-js";
-import { A, createAsync } from "@solidjs/router";
+import { A } from "@solidjs/router";
+import { useQuery } from "@tanstack/solid-query";
 import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
@@ -45,23 +46,22 @@ const buildDirectory = (nodes: DirectoryNode[]): TreeNode | undefined => {
 const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 	props,
 ) => {
-	const { node, indexPath } = props;
 	const nodeClass =
 		"flex p-2 gap-2 rounded-lg transition-colors duration-100 cursor-pointer select-none";
 
 	return (
-		<TreeView.NodeProvider node={node} indexPath={indexPath}>
+		<TreeView.NodeProvider node={props.node} indexPath={props.indexPath}>
 			<Show
-				when={node.type === "folder"}
+				when={props.node.type === "folder"}
 				fallback={
 					<A
-						href={`thread/${node.id}`}
+						href={`thread/${props.node.id}`}
 						class={nodeClass}
 						inactiveClass="hover:bg-background-200 dark:hover:bg-background-800"
 						activeClass="bg-accent-100 dark:bg-accent-800"
 					>
 						<MessageSquareText />
-						{node.name}
+						{props.node.name}
 					</A>
 				}
 			>
@@ -71,17 +71,17 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 							class={`${nodeClass} hover:bg-background-200 dark:hover:bg-background-800 group text-background-400 dark:text-background-500 font-bold`}
 						>
 							<ChevronRight class="group-data-[state=open]:rotate-90 transition-transform duration-200" />
-							{node.name}
+							{props.node.name}
 						</TreeView.BranchText>
 					</TreeView.BranchControl>
 					<TreeView.BranchContent class="flex gap-3 overflow-hidden data-[state=closed]:animate-[slideUp_200ms] data-[state=open]:animate-[slideDown_200ms]">
 						<TreeView.BranchIndentGuide class="border-l-2 border-background-200 dark:border-background-900 ml-4" />
 						<div class="flex flex-col gap-1 grow">
-							<For each={node.children}>
+							<For each={props.node.children}>
 								{(child, index) => (
 									<DirectoryItem
 										node={child}
-										indexPath={[...indexPath, index()]}
+										indexPath={[...props.indexPath, index()]}
 									/>
 								)}
 							</For>
@@ -95,11 +95,15 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 
 const Directory = () => {
 	const { getApi } = useApi();
-	const nodes = createAsync<DirectoryNode[]>(() => getApi("/directory/1"));
+
+	const nodes = useQuery(() => ({
+		queryKey: ["directory", 1],
+		queryFn: () => getApi<DirectoryNode[]>("/directory/1"),
+	}));
 
 	return (
-		<Suspense fallback={<p>Loading...</p>}>
-			<Show when={nodes()}>
+		<Suspense>
+			<Show when={nodes.data}>
 				{(nodesData) => {
 					const directory = buildDirectory(nodesData());
 					if (!directory) return;
