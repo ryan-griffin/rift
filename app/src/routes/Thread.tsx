@@ -265,7 +265,7 @@ const Thread: Component = () => {
 	const removeHandler = onMessage((event) => {
 		const env: WsServerMessage = JSON.parse(event.data);
 
-		if (env.module === "messaging") {
+		if (env.module === "messages") {
 			switch (env.type) {
 				case "message_created": {
 					const message = env.payload;
@@ -311,7 +311,7 @@ const Thread: Component = () => {
 		if (!isTyping()) {
 			setIsTyping(true);
 			sendMessage({
-				module: "messaging",
+				module: "messages",
 				type: "typing",
 				payload: { thread_id: Number(params.id) },
 			});
@@ -330,7 +330,7 @@ const Thread: Component = () => {
 		if (isTyping()) {
 			setIsTyping(false);
 			sendMessage({
-				module: "messaging",
+				module: "messages",
 				type: "stop_typing",
 				payload: { thread_id: Number(params.id) },
 			});
@@ -367,7 +367,7 @@ const Thread: Component = () => {
 		stopTyping();
 
 		sendMessage({
-			module: "messaging",
+			module: "messages",
 			type: "create_message",
 			payload: newMessage,
 		});

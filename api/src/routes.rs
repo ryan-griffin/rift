@@ -48,11 +48,24 @@ pub async fn get_directory(
 	}
 }
 
-pub async fn get_thread(
+pub async fn create_directory(
+	State(app_state): State<AppState>,
+	Json(directory): Json<Directory>,
+) -> Result<Json<Directory>> {
+	match db::create_directory(&app_state.conn, directory).await {
+		Ok(created_directory) => Ok(Json(created_directory)),
+		Err(err) => {
+			eprintln!("{err}");
+			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+		}
+	}
+}
+
+pub async fn get_message_thread(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
 ) -> Result<Json<Vec<Message>>> {
-	match db::get_thread(&app_state.conn, id).await {
+	match db::get_message_thread(&app_state.conn, id).await {
 		Ok(thread) => Ok(Json(thread)),
 		Err(err) => {
 			eprintln!("{err}");
@@ -88,7 +101,7 @@ pub async fn create_message(
 
 	app_state
 		.ws_state
-		.broadcast("messaging", "message_created", &created_message)
+		.broadcast("messages", "message_created", &created_message)
 		.await
 		.map_err(|e| {
 			eprintln!("{e}");
@@ -96,30 +109,6 @@ pub async fn create_message(
 		})?;
 
 	Ok(Json(created_message))
-}
-
-pub async fn login(
-	State(app_state): State<AppState>,
-	Json(credentials): Json<Credentials>,
-) -> Result<Json<AuthResponse>> {
-	let user = match authenticate_user(&app_state.conn, &credentials).await {
-		Ok(Some(user)) => user,
-		Ok(None) => return Err(StatusCode::UNAUTHORIZED.into()),
-		Err(err) => {
-			eprintln!("{err}");
-			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
-		}
-	};
-
-	let token = match generate_token(&user.username) {
-		Ok(token) => token,
-		Err(err) => {
-			eprintln!("{err}");
-			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
-		}
-	};
-
-	Ok(Json(AuthResponse { user, token }))
 }
 
 pub async fn signup(
@@ -157,6 +146,27 @@ pub async fn signup(
 		user: created_user,
 		token,
 	}))
+}
+
+pub async fn login(
+	State(app_state): State<AppState>,
+	Json(credentials): Json<Credentials>,
+) -> Result<Json<AuthResponse>> {
+	let user = match authenticate_user(&app_state.conn, &credentials).await {
+		Ok(Some(user)) => user,
+		Ok(None) => return Err(StatusCode::UNAUTHORIZED.into()),
+		Err(err) => {
+			eprintln!("{err}");
+			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
+		}
+	};
+
+	let token = generate_token(&user.username).map_err(|e| {
+		eprintln!("{e}");
+		StatusCode::INTERNAL_SERVER_ERROR
+	})?;
+
+	Ok(Json(AuthResponse { user, token }))
 }
 
 pub async fn ws_handler(

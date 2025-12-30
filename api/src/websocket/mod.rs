@@ -1,4 +1,4 @@
-mod messaging;
+mod messages;
 mod users;
 
 use axum::extract::ws::{Message as WsMessage, WebSocket};
@@ -91,7 +91,7 @@ pub trait WsModule: Send + Sync + 'static {
 fn module_registry() -> HashMap<&'static str, Arc<dyn WsModule>> {
 	let mut map: HashMap<&'static str, Arc<dyn WsModule>> = HashMap::new();
 
-	map.insert("messaging", Arc::new(messaging::MessagingModule));
+	map.insert("messages", Arc::new(messages::MessagesModule));
 	map.insert("users", Arc::new(users::UsersModule));
 
 	map

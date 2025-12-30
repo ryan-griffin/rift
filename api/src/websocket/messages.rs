@@ -18,12 +18,12 @@ struct UserTypingPayload {
 
 type UserStoppedTypingPayload = UserTypingPayload;
 
-pub struct MessagingModule;
+pub struct MessagesModule;
 
 #[async_trait::async_trait]
-impl WsModule for MessagingModule {
+impl WsModule for MessagesModule {
 	fn name(&self) -> &'static str {
-		"messaging"
+		"messages"
 	}
 
 	async fn on_client_msg(&self, ctx: &WsContext, env: &WsEnvelope) -> Result<(), String> {
