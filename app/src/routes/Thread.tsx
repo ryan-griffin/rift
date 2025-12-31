@@ -9,8 +9,9 @@ import {
 	Show,
 	Suspense,
 } from "solid-js";
-import { createStore, produce } from "solid-js/store";
-import { createAsync, useParams } from "@solidjs/router";
+import { createStore } from "solid-js/store";
+import { useParams } from "@solidjs/router";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
 import {
 	CreateMessage,
 	DirectoryNode,
@@ -70,7 +71,7 @@ const shouldGroupMessage = (anchor: Message, message: Message) => {
 const buildMessagesState = (messages: Message[]): MessagesState => {
 	const byId: Record<number, Message> = {};
 	const groups: number[][] = [];
-	if (messages.length === 0) return { byId, groups, messageCount: 0 };
+	if (!messages.length) return { byId, groups, messageCount: 0 };
 
 	let currentGroup: number[] = [];
 
@@ -78,8 +79,7 @@ const buildMessagesState = (messages: Message[]): MessagesState => {
 		byId[message.id] = message;
 
 		if (
-			currentGroup.length > 0 &&
-			shouldGroupMessage(byId[currentGroup[0]], message)
+			currentGroup.length && shouldGroupMessage(byId[currentGroup[0]], message)
 		) {
 			currentGroup.push(message.id);
 		} else {
@@ -93,31 +93,28 @@ const buildMessagesState = (messages: Message[]): MessagesState => {
 	return { byId, groups, messageCount: messages.length };
 };
 
-const appendMessage = (
+const appendMessageToState = (
 	state: MessagesState,
 	message: Message,
-) => {
-	if (state.byId[message.id] === undefined) {
-		state.messageCount += 1;
-	}
+): MessagesState => {
+	const byId = { ...state.byId, [message.id]: message };
+	const messageCount = state.messageCount + 1;
 
-	state.byId[message.id] = message;
-
-	if (state.groups.length === 0) {
-		state.groups.push([message.id]);
-		return;
+	if (!state.groups.length) {
+		return { byId, groups: [[message.id]], messageCount };
 	}
 
 	const lastGroup = state.groups[state.groups.length - 1];
-	const anchorId = lastGroup[0];
-	const anchor = state.byId[anchorId];
+	const anchor = state.byId[lastGroup[0]];
 
-	if (anchor && shouldGroupMessage(anchor, message)) {
-		lastGroup.push(message.id);
-		return;
+	if (shouldGroupMessage(anchor, message)) {
+		const newGroups = [...state.groups];
+		newGroups[newGroups.length - 1] = [...lastGroup, message.id];
+		return { byId, groups: newGroups, messageCount };
 	}
 
-	state.groups.push([message.id]);
+	const newGroups = [...state.groups, [message.id]];
+	return { byId, groups: newGroups, messageCount };
 };
 
 const MessageGroup: Component<
@@ -238,27 +235,23 @@ const Thread: Component = () => {
 	const params = useParams<{ id: string }>();
 	const { getApi } = useApi();
 	const { onMessage, sendMessage } = useWebSocket();
+	const queryClient = useQueryClient();
 
-	const directoryNode = createAsync<DirectoryNode[]>(() =>
-		getApi(`/directory/${params.id}`)
-	);
-	const threadNode = () => directoryNode()?.[0];
+	const directoryNode = useQuery(() => ({
+		queryKey: ["directory", Number(params.id)],
+		queryFn: () => getApi<DirectoryNode[]>(`/directory/${params.id}`),
+	}));
+	const threadNode = () => directoryNode.data?.[0];
 
-	const initialMessages = createAsync<Message[]>(() =>
-		getApi(`/thread/${params.id}`)
-	);
-
-	const [messagesState, setMessagesState] = createStore<MessagesState>({
-		byId: {},
-		groups: [],
-		messageCount: 0,
-	});
-
-	createEffect(() => {
-		const initial = initialMessages();
-		if (!initial) return;
-		setMessagesState(buildMessagesState(initial));
-	});
+	const messages = useQuery(() => ({
+		queryKey: ["thread", Number(params.id)],
+		queryFn: async () => {
+			const data = await getApi<Message[]>(`/thread/${params.id}`);
+			return buildMessagesState(data);
+		},
+		staleTime: Infinity,
+		gcTime: 1000 * 60 * 30,
+	}));
 
 	const [typingUsers, setTypingUsers] = createSignal<string[]>([]);
 
@@ -269,9 +262,13 @@ const Thread: Component = () => {
 			switch (env.type) {
 				case "message_created": {
 					const message = env.payload;
-					if (message.directory_id !== Number(params.id)) return;
-					setMessagesState(
-						produce((state) => appendMessage(state, message)),
+
+					queryClient.setQueryData<MessagesState>(
+						["thread", message.directory_id],
+						(prev) => {
+							if (!prev) return buildMessagesState([message]);
+							return appendMessageToState(prev, message);
+						},
 					);
 					break;
 				}
@@ -358,7 +355,7 @@ const Thread: Component = () => {
 	const replyTarget = () => {
 		const parentId = newMessage.parent_id;
 		if (parentId === null) return null;
-		return messagesState.byId[parentId] ?? null;
+		return messages.data?.byId[parentId] ?? null;
 	};
 
 	const handleSend = () => {
@@ -405,7 +402,7 @@ const Thread: Component = () => {
 	};
 
 	createEffect(() => {
-		if (messagesState.messageCount && scrollState.isBottom) {
+		if (messages.data?.messageCount && scrollState.isBottom) {
 			requestAnimationFrame(scrollToBottom);
 		}
 	});
@@ -466,10 +463,10 @@ const Thread: Component = () => {
 					>
 						<div class="flex-1" />
 						<div class="flex flex-col gap-6">
-							<For each={messagesState.groups}>
+							<For each={messages.data?.groups}>
 								{(groupIds) => (
 									<MessageGroup
-										messagesById={messagesState.byId}
+										messagesById={messages.data!.byId}
 										groupIds={groupIds}
 										onMessageClick={(id) => {
 											setNewMessage("parent_id", id);
