@@ -48,7 +48,8 @@ pub struct WsState {
 }
 
 impl WsState {
-	pub fn new(tx: Sender<WsEnvelope>) -> Self {
+	pub fn new(capacity: usize) -> Self {
+		let (tx, _) = broadcast::channel::<WsEnvelope>(capacity);
 		Self { tx }
 	}
 

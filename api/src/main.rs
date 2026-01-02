@@ -19,9 +19,9 @@ use routes::*;
 use sea_orm::{Database, DatabaseConnection};
 use std::env;
 use std::sync::LazyLock;
-use tokio::{net::TcpListener, sync::broadcast};
+use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
-use websocket::{WsEnvelope, WsState};
+use websocket::WsState;
 
 #[derive(Clone)]
 pub struct AppState {
@@ -49,8 +49,7 @@ async fn main() {
 		.expect("Failed to connect to the database");
 	Migrator::up(&conn, None).await.unwrap();
 
-	let (tx, _) = broadcast::channel::<WsEnvelope>(1000);
-	let ws_state = WsState::new(tx);
+	let ws_state = WsState::new(1000);
 
 	let cors = CorsLayer::new()
 		.allow_origin(Any)
