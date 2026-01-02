@@ -6,6 +6,7 @@ use futures_util::{SinkExt, StreamExt, stream::SplitSink};
 use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
+use std::sync::LazyLock;
 use std::{collections::HashMap, sync::Arc};
 use tokio::sync::{
 	Mutex, broadcast,
@@ -88,14 +89,14 @@ pub trait WsModule: Send + Sync + 'static {
 	}
 }
 
-fn module_registry() -> HashMap<&'static str, Arc<dyn WsModule>> {
-	let mut map: HashMap<&'static str, Arc<dyn WsModule>> = HashMap::new();
+static MODULE_REGISTRY: LazyLock<HashMap<&'static str, Arc<dyn WsModule>>> = LazyLock::new(|| {
+	let modules: Vec<Arc<dyn WsModule>> = vec![
+		Arc::new(messages::MessagesModule),
+		Arc::new(users::UsersModule),
+	];
 
-	map.insert("messages", Arc::new(messages::MessagesModule));
-	map.insert("users", Arc::new(users::UsersModule));
-
-	map
-}
+	modules.into_iter().map(|m| (m.name(), m)).collect()
+});
 
 async fn send_msg_to_client(
 	sender: &Arc<Mutex<SplitSink<WebSocket, WsMessage>>>,
@@ -123,7 +124,7 @@ pub async fn handle_socket(
 	state: WsState,
 	username: String,
 ) {
-	let modules = module_registry();
+	let modules = &*MODULE_REGISTRY;
 
 	let (sender, mut receiver) = socket.split();
 	let sender = Arc::new(Mutex::new(sender));
