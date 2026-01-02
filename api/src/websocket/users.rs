@@ -1,5 +1,5 @@
 use crate::entity::users::Model as User;
-use crate::websocket::{WsContext, WsEnvelope, WsModule};
+use crate::websocket::{WsContext, WsModule, WsPayload};
 
 pub struct UsersModule;
 
@@ -9,9 +9,9 @@ impl WsModule for UsersModule {
 		"users"
 	}
 
-	fn should_deliver(&self, ctx: &WsContext, env: &WsEnvelope) -> bool {
-		match env.r#type.as_str() {
-			"user_created" => match env.get_payload::<User>() {
+	fn should_deliver(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> bool {
+		match r#type {
+			"user_created" => match payload.get::<User>() {
 				Ok(p) => p.username != ctx.username,
 				Err(_) => true,
 			},

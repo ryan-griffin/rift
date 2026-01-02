@@ -1,6 +1,6 @@
 use crate::db::create_message;
 use crate::entity::messages::Model as Message;
-use crate::websocket::{WsContext, WsEnvelope, WsModule};
+use crate::websocket::{WsContext, WsModule, WsPayload};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -26,10 +26,15 @@ impl WsModule for MessagesModule {
 		"messages"
 	}
 
-	async fn on_client_msg(&self, ctx: &WsContext, env: &WsEnvelope) -> Result<(), String> {
-		match env.r#type.as_str() {
+	async fn handle(
+		&self,
+		ctx: &WsContext,
+		r#type: &str,
+		payload: &WsPayload,
+	) -> Result<(), String> {
+		match r#type {
 			"typing" => {
-				let TypingPayload { thread_id } = env.get_payload()?;
+				let TypingPayload { thread_id } = payload.get()?;
 
 				let payload = UserTypingPayload {
 					username: ctx.username.clone(),
@@ -42,7 +47,7 @@ impl WsModule for MessagesModule {
 			}
 
 			"stop_typing" => {
-				let StopTypingPayload { thread_id } = env.get_payload()?;
+				let StopTypingPayload { thread_id } = payload.get()?;
 
 				let payload = UserStoppedTypingPayload {
 					username: ctx.username.clone(),
@@ -55,24 +60,28 @@ impl WsModule for MessagesModule {
 			}
 
 			"create_message" => {
-				let msg = env.get_payload::<Message>()?;
+				let msg = payload.get::<Message>()?;
 
 				let created = create_message(&ctx.conn, ctx.username.clone(), msg)
 					.await
-					.map_err(|e| format!("create_message failed: {e}"))?;
+					.map_err(|e| format!("Failed to create message: {e}"))?;
 
 				ctx.state
 					.broadcast(self.name(), "message_created", &created)
 					.await
 			}
 
-			other => Err(format!("Unknown message type: {other}")),
+			other => Err(format!(
+				"Invalid message type '{}' for module '{}'",
+				other,
+				self.name()
+			)),
 		}
 	}
 
-	fn should_deliver(&self, ctx: &WsContext, env: &WsEnvelope) -> bool {
-		match env.r#type.as_str() {
-			"user_typing" | "user_stopped_typing" => match env.get_payload::<UserTypingPayload>() {
+	fn should_deliver(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> bool {
+		match r#type {
+			"user_typing" | "user_stopped_typing" => match payload.get::<UserTypingPayload>() {
 				Ok(p) => p.username != ctx.username,
 				Err(_) => true,
 			},
