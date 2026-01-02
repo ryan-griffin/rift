@@ -81,7 +81,7 @@ pub struct WsContext {
 pub trait WsModule: Send + Sync + 'static {
 	fn name(&self) -> &'static str;
 
-	async fn on_client_msg(&self, _ctx: &WsContext, _env: &WsEnvelope) -> Result<(), String> {
+	async fn handle(&self, _ctx: &WsContext, _env: &WsEnvelope) -> Result<(), String> {
 		Ok(())
 	}
 
@@ -146,7 +146,7 @@ pub async fn handle_socket(
 						match serde_json::from_str::<WsEnvelope>(&text) {
 							Ok(env) => {
 								if let Some(module) = modules.get(env.module.as_str()) {
-									if let Err(err) = module.on_client_msg(&ctx, &env).await
+									if let Err(err) = module.handle(&ctx, &env).await
 										&& let Ok(msg) = WsEnvelope::new("system", "error", err)
 									{
 										send_msg_to_client(&sender, &msg).await.unwrap();

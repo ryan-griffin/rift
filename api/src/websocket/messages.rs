@@ -26,7 +26,7 @@ impl WsModule for MessagesModule {
 		"messages"
 	}
 
-	async fn on_client_msg(&self, ctx: &WsContext, env: &WsEnvelope) -> Result<(), String> {
+	async fn handle(&self, ctx: &WsContext, env: &WsEnvelope) -> Result<(), String> {
 		match env.r#type.as_str() {
 			"typing" => {
 				let TypingPayload { thread_id } = env.get_payload()?;
