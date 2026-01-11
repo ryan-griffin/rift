@@ -1,6 +1,7 @@
 use crate::db::create_message;
 use crate::entity::messages::Model as Message;
 use crate::websocket::{WsContext, WsModule, WsPayload};
+use anyhow::{Result, anyhow};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -26,12 +27,7 @@ impl WsModule for MessagesModule {
 		"messages"
 	}
 
-	async fn handle(
-		&self,
-		ctx: &WsContext,
-		r#type: &str,
-		payload: &WsPayload,
-	) -> Result<(), String> {
+	async fn handle(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> Result<()> {
 		match r#type {
 			"typing" => {
 				let TypingPayload { thread_id } = payload.get()?;
@@ -62,16 +58,14 @@ impl WsModule for MessagesModule {
 			"create_message" => {
 				let msg = payload.get::<Message>()?;
 
-				let created = create_message(&ctx.conn, ctx.username.clone(), msg)
-					.await
-					.map_err(|e| format!("Failed to create message: {e}"))?;
+				let created = create_message(&ctx.conn, ctx.username.clone(), msg).await?;
 
 				ctx.state
 					.broadcast(self.name(), "message_created", &created)
 					.await
 			}
 
-			other => Err(format!(
+			other => Err(anyhow!(
 				"Invalid message type '{}' for module '{}'",
 				other,
 				self.name()
@@ -83,7 +77,7 @@ impl WsModule for MessagesModule {
 		match r#type {
 			"user_typing" | "user_stopped_typing" => match payload.get::<UserTypingPayload>() {
 				Ok(p) => p.username != ctx.username,
-				Err(_) => true,
+				Err(_) => false,
 			},
 			_ => true,
 		}

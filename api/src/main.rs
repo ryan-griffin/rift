@@ -3,13 +3,14 @@ mod db;
 mod entity;
 mod routes;
 mod websocket;
+use anyhow::{Context, Result};
 use auth::auth_middleware;
 use axum::{
 	Router,
 	body::Body,
 	http::{HeaderMap, StatusCode, Uri},
 	middleware,
-	response::{Response, Result},
+	response::Response,
 	routing::{get, post},
 };
 use dotenvy::dotenv;
@@ -17,8 +18,7 @@ use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use routes::*;
 use sea_orm::{Database, DatabaseConnection};
-use std::env;
-use std::sync::LazyLock;
+use std::{env, sync::LazyLock};
 use tokio::net::TcpListener;
 use tower_http::cors::{Any, CorsLayer};
 use websocket::WsState;
@@ -32,22 +32,23 @@ pub struct AppState {
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 
 #[tokio::main]
-async fn main() {
+async fn main() -> Result<()> {
 	dotenv().ok();
 
-	let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
-	let api_host = env::var("API_HOST").expect("API_HOST must be set");
-	let api_port = env::var("API_PORT").expect("API_PORT must be set");
-	let app_host = env::var("APP_HOST").expect("APP_HOST must be set");
+	let database_url = env::var("DATABASE_URL").context("DATABASE_URL must be set")?;
+	let api_host = env::var("API_HOST").context("API_HOST must be set")?;
+	let api_port = env::var("API_PORT").context("API_PORT must be set")?;
+	let app_host = env::var("APP_HOST").context("APP_HOST must be set")?;
 	let app_port = env::var("APP_PORT")
-		.expect("APP_PORT must be set")
-		.parse::<u16>()
-		.unwrap();
+		.context("APP_PORT must be set")?
+		.parse::<u16>()?;
 
 	let conn = Database::connect(&database_url)
 		.await
-		.expect("Failed to connect to the database");
-	Migrator::up(&conn, None).await.unwrap();
+		.context("Failed to connect to the database")?;
+	Migrator::up(&conn, None)
+		.await
+		.context("Failed to run database migrations")?;
 
 	let ws_state = WsState::new(1000);
 
@@ -74,14 +75,19 @@ async fn main() {
 		.layer(cors)
 		.with_state(AppState { conn, ws_state });
 
-	let listener = TcpListener::bind(format!("{api_host}:{api_port}"))
-		.await
-		.unwrap();
+	let listener = TcpListener::bind(format!("{api_host}:{api_port}")).await?;
 	println!("Server running on http://{api_host}:{api_port}");
-	axum::serve(listener, app).await.unwrap();
+	axum::serve(listener, app).await?;
+
+	Ok(())
 }
 
-async fn proxy(uri: Uri, host: String, port: u16, headers: HeaderMap) -> Result<Response> {
+async fn proxy(
+	uri: Uri,
+	host: String,
+	port: u16,
+	headers: HeaderMap,
+) -> Result<Response, StatusCode> {
 	let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
 	let proxy_url = format!("http://{host}:{port}{path_and_query}");
 
@@ -111,9 +117,9 @@ async fn proxy(uri: Uri, host: String, port: u16, headers: HeaderMap) -> Result<
 
 			Ok(builder.body(Body::from(body)).unwrap())
 		}
-		Err(e) => {
-			eprintln!("Proxy error for {}: {}", proxy_url, e);
-			Err(StatusCode::BAD_GATEWAY.into())
+		Err(err) => {
+			eprintln!("Proxy error for {}: {}", proxy_url, err);
+			Err(StatusCode::BAD_GATEWAY)
 		}
 	}
 }

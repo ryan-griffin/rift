@@ -13,7 +13,7 @@ impl WsModule for UsersModule {
 		match r#type {
 			"user_created" => match payload.get::<User>() {
 				Ok(p) => p.username != ctx.username,
-				Err(_) => true,
+				Err(_) => false,
 			},
 			_ => true,
 		}
