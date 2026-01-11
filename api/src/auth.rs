@@ -1,5 +1,6 @@
 use crate::db;
 use crate::entity;
+use anyhow::{Context, Error, Result};
 use axum::{
 	extract::{Query, Request},
 	http::{HeaderMap, StatusCode},
@@ -8,9 +9,7 @@ use axum::{
 };
 use bcrypt::BcryptError;
 use entity::users::Model as User;
-use jsonwebtoken::{
-	DecodingKey, EncodingKey, Header, TokenData, Validation, decode, encode, errors::Error,
-};
+use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use sea_orm::{DatabaseConnection, DbErr};
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env};
@@ -41,12 +40,12 @@ fn verify_password(password: &str, hash: &str) -> Result<bool, BcryptError> {
 	bcrypt::verify(password, hash)
 }
 
-pub fn generate_token(username: &str) -> Result<String, Error> {
-	let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+pub fn generate_token(username: &str) -> Result<String> {
+	let jwt_secret = env::var("JWT_SECRET").context("JWT_SECRET must be set")?;
 
 	let expiration = chrono::Utc::now()
 		.checked_add_signed(chrono::Duration::days(30))
-		.expect("valid timestamp")
+		.context("Failed to calculate expiration time")?
 		.timestamp() as usize;
 
 	let claims = Claims {
@@ -54,17 +53,18 @@ pub fn generate_token(username: &str) -> Result<String, Error> {
 		exp: expiration,
 	};
 
-	encode(
+	let token = encode(
 		&Header::default(),
 		&claims,
 		&EncodingKey::from_secret(jwt_secret.as_ref()),
-	)
+	)?;
+	Ok(token)
 }
 
-fn validate_token(token: &str) -> Result<Claims, Error> {
-	let jwt_secret = env::var("JWT_SECRET").expect("JWT_SECRET must be set");
+fn validate_token(token: &str) -> Result<Claims> {
+	let jwt_secret = env::var("JWT_SECRET").context("JWT_SECRET must be set")?;
 
-	let token_data: TokenData<Claims> = decode(
+	let token_data = decode(
 		token,
 		&DecodingKey::from_secret(jwt_secret.as_ref()),
 		&Validation::default(),
@@ -89,15 +89,15 @@ fn extract_token_from_query(query: &HashMap<String, String>) -> Option<String> {
 pub async fn authenticate_user(
 	db: &DatabaseConnection,
 	credentials: &Credentials,
-) -> Result<Option<User>, DbErr> {
+) -> Result<Option<User>> {
 	match db::get_user(db, &credentials.username).await {
 		Ok(user) => match verify_password(&credentials.password, &user.password) {
 			Ok(true) => Ok(Some(user)),
 			Ok(false) => Ok(None),
-			Err(_) => Ok(None),
+			Err(err) => Err(Error::from(err)),
 		},
 		Err(DbErr::RecordNotFound(_)) => Ok(None),
-		Err(err) => Err(err),
+		Err(err) => Err(Error::from(err)),
 	}
 }
 

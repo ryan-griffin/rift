@@ -28,3 +28,4 @@ reqwest = { version = "0.12.24", default-features = false, features = [
 	"native-tls",
 ] }
 bcrypt = "0.17.1"
+anyhow = "1.0.100"
