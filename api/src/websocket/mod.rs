@@ -1,3 +1,4 @@
+mod directory;
 mod messages;
 mod users;
 
@@ -19,8 +20,13 @@ use tokio::sync::{
 	broadcast::{Receiver, Sender},
 };
 
-static MODULE_LIST: LazyLock<Vec<&'static dyn WsModule>> =
-	LazyLock::new(|| vec![&messages::MessagesModule, &users::UsersModule]);
+static MODULE_LIST: LazyLock<Vec<&'static dyn WsModule>> = LazyLock::new(|| {
+	vec![
+		&directory::DirectoryModule,
+		&messages::MessagesModule,
+		&users::UsersModule,
+	]
+});
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WsPayload(Value);
