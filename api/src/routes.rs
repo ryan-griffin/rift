@@ -52,13 +52,23 @@ pub async fn create_directory(
 	State(app_state): State<AppState>,
 	Json(directory): Json<Directory>,
 ) -> Result<Json<Directory>> {
-	match db::create_directory(&app_state.conn, directory).await {
-		Ok(created_directory) => Ok(Json(created_directory)),
-		Err(err) => {
-			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-		}
-	}
+	let created_directory = db::create_directory(&app_state.conn, directory)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	app_state
+		.ws_state
+		.broadcast("directory", "directory_created", &created_directory)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	Ok(Json(created_directory))
 }
 
 pub async fn get_message_thread(
