@@ -1,6 +1,6 @@
-const env = { ...Deno.env.toObject() };
+const env = { ...Bun.env };
 
-const [task] = Deno.args;
+const task = Bun.argv[2];
 
 if (task === "dev" || task === "start") {
 	env.HOST = env.APP_HOST;
@@ -11,9 +11,8 @@ if (task === "dev" || task === "build") {
 	env.VITE_API_ADDRESS = `${env.API_HOST}:${env.API_PORT}`;
 }
 
-new Deno.Command("deno", {
-	args: ["run", "-A", "npm:vinxi", task],
+Bun.spawn(["bun", "run", "vinxi", task as string], {
 	env,
 	stdout: "inherit",
 	stderr: "inherit",
-}).spawn();
+});

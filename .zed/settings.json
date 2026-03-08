@@ -3,14 +3,17 @@
 	"languages": {
 		"TypeScript": {
 			"language_servers": [
-				"deno"
+				"vtsls",
+				"biome",
+				"! eslint"
 			]
 		},
 		"TSX": {
 			"language_servers": [
-				"deno",
+				"vtsls",
+				"biome",
 				"tailwindcss-language-server",
-				"! vtsls"
+				"! eslint"
 			]
 		}
 	}

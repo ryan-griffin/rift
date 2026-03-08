@@ -13,24 +13,23 @@ migrate-reset:
 dev-web:
 	#!/usr/bin/env bash
 	trap 'kill 0' EXIT
-	just dev-api & deno task --cwd=app dev
+	just dev-api & bun run --cwd=app dev
 
 build-web:
-	deno task --cwd=app build
+	bun run --cwd=app build
 
 start-web:
 	#!/usr/bin/env bash
 	trap 'kill 0' EXIT
-	just start-api & deno task --cwd=app start
+	just start-api & bun run --cwd=app start
 
 dev-desktop:
 	#!/usr/bin/env bash
 	trap 'kill 0' EXIT
-	just dev-api & deno task --cwd=app tauri dev
+	just dev-api & bun run --cwd=app tauri dev
 
 build-desktop:
-	deno task --cwd=app tauri build
+	bun run --cwd=app tauri build
 
 fmt:
 	cargo fmt
-	deno fmt
