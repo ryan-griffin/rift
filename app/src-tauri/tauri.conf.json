@@ -4,8 +4,8 @@
 	"version": "0.1.0",
 	"identifier": "com.rift.app",
 	"build": {
-		"beforeDevCommand": "deno task dev",
-		"beforeBuildCommand": "deno task build",
+		"beforeDevCommand": "bun run dev",
+		"beforeBuildCommand": "bun run build",
 		"devUrl": "http://localhost:8081",
 		"frontendDist": "../.output-tauri/public"
 	},

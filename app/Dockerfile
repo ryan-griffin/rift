@@ -1,13 +1,10 @@
-FROM docker.io/denoland/deno:latest as builder
-
-RUN apt-get update && apt-get install -y nodejs && \
-	rm -rf /var/lib/apt/lists/*
+FROM docker.io/oven/bun:latest as builder
 
 WORKDIR /app
 
-COPY deno.json deno.lock package.json ./
+COPY package.json bun.lock ./
 
-RUN deno install --allow-scripts
+RUN bun install
 
 COPY . .
 
@@ -18,9 +15,9 @@ ARG API_CONTAINER
 ENV VITE_API_ADDRESS=${API_HOST}:${API_PORT}
 ENV VITE_API_CONTAINER_ADDRESS=${API_CONTAINER}:${API_PORT}
 
-RUN deno run -A npm:vinxi build
+RUN bun run build
 
-FROM docker.io/denoland/deno:latest
+FROM docker.io/oven/bun:latest
 
 WORKDIR /app
 
@@ -30,4 +27,4 @@ ARG APP_PORT=${APP_PORT}
 
 EXPOSE ${APP_PORT}
 
-CMD ["deno", "task", "start"]
+CMD ["bun", "run", "server/index.mjs"]
