@@ -1,27 +1,26 @@
 {
 	"compilerOptions": {
-		"lib": [
-			"DOM",
-			"DOM.Iterable",
-			"ESNext"
-		],
 		"target": "ESNext",
+		"lib": ["DOM", "DOM.Iterable", "ESNext"],
 		"module": "Preserve",
+		"moduleResolution": "bundler",
 		"moduleDetection": "force",
+		"allowImportingTsExtensions": true,
+		"verbatimModuleSyntax": true,
+		"isolatedModules": true,
 		"jsx": "preserve",
 		"jsxImportSource": "solid-js",
-		"allowJs": true,
-		"moduleResolution": "bundler",
-		"allowImportingTsExtensions": true,
-		// "verbatimModuleSyntax": true,
 		"noEmit": true,
+		"allowJs": true,
 		"strict": true,
-		"skipLibCheck": true,
+		"forceConsistentCasingInFileNames": true,
 		"noFallthroughCasesInSwitch": true,
 		"noUncheckedIndexedAccess": true,
 		"noImplicitOverride": true,
 		"noUnusedLocals": true,
 		"noUnusedParameters": true,
-		// "noPropertyAccessFromIndexSignature": true
-	}
+		"skipLibCheck": true,
+		"types": ["bun"]
+	},
+	"exclude": ["src-tauri"]
 }
