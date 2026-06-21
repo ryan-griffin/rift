@@ -1,10 +1,10 @@
-import { Component, For, Show, Suspense } from "solid-js";
+import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
 import { A } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
-import { createTreeCollection, TreeView } from "@ark-ui/solid/tree-view";
+import { type Component, For, Show, Suspense } from "solid-js";
+import type { DirectoryNode } from "../apiUtils.ts";
 import ChevronRight from "../assets/chevron-right.svg";
 import MessageSquareText from "../assets/message-square-text.svg";
-import { DirectoryNode } from "../apiUtils.ts";
 import { useApi } from "./Api.tsx";
 
 interface TreeNode {
@@ -81,7 +81,10 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 								{(child, index) => (
 									<DirectoryItem
 										node={child}
-										indexPath={[...props.indexPath, index()]}
+										indexPath={[
+											...props.indexPath,
+											index(),
+										]}
 									/>
 								)}
 							</For>

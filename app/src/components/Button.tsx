@@ -1,4 +1,4 @@
-import { Component, JSX, Show } from "solid-js";
+import { type Component, type JSX, Show } from "solid-js";
 
 interface Props {
 	type?: "button" | "submit" | "reset";
@@ -18,8 +18,7 @@ const Button: Component<Props> = (props) => {
 	const variantStyles = {
 		regular:
 			"bg-background-100 hover:bg-background-200 active:bg-background-300 dark:bg-background-800 dark:hover:bg-background-700 dark:active:bg-background-600",
-		flat:
-			"hover:bg-background-100 active:bg-background-200 dark:hover:bg-background-800 dark:active:bg-background-700",
+		flat: "hover:bg-background-100 active:bg-background-200 dark:hover:bg-background-800 dark:active:bg-background-700",
 		suggested:
 			"text-white bg-accent-500 hover:bg-accent-400 active:bg-accent-600",
 		destructive:

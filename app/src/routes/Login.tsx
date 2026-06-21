@@ -1,6 +1,6 @@
-import { Component, createSignal } from "solid-js";
-import { createStore } from "solid-js/store";
 import { useNavigate } from "@solidjs/router";
+import { type Component, createSignal } from "solid-js";
+import { createStore } from "solid-js/store";
 import { useAuth } from "../components/Auth.tsx";
 import Button from "../components/Button.tsx";
 import Input from "../components/Input.tsx";
@@ -18,7 +18,7 @@ const Login: Component = () => {
 		e.preventDefault();
 		switch (segment()) {
 			case "Login":
-				if (state.username && state.password && await login(state)) {
+				if (state.username && state.password && (await login(state))) {
 					navigate("/");
 				} else {
 					alert("Login failed. Please try again.");
@@ -26,8 +26,9 @@ const Login: Component = () => {
 				break;
 			case "Sign Up":
 				if (
-					state.username && state.password &&
-					await signup({ name: state.username, ...state })
+					state.username &&
+					state.password &&
+					(await signup({ name: state.username, ...state }))
 				) {
 					navigate("/");
 				} else {

@@ -1,7 +1,7 @@
-import { Component } from "solid-js";
-import Button from "../components/Button.tsx";
-import { useAuth } from "../components/Auth.tsx";
+import type { Component } from "solid-js";
 import { getBaseColor, updateTheme } from "../colorUtils.ts";
+import { useAuth } from "../components/Auth.tsx";
+import Button from "../components/Button.tsx";
 
 const Settings: Component = () => {
 	const { logout } = useAuth();

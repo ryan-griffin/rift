@@ -1,5 +1,5 @@
-import { Component, createEffect, JSX, Show } from "solid-js";
 import { useNavigate } from "@solidjs/router";
+import { type Component, createEffect, type JSX, Show } from "solid-js";
 import { useAuth } from "./Auth.tsx";
 
 const ProtectedRoute: Component<{ children: JSX.Element }> = (props) => {
@@ -10,11 +10,7 @@ const ProtectedRoute: Component<{ children: JSX.Element }> = (props) => {
 		if (!auth.token || !auth.user) navigate("/login");
 	});
 
-	return (
-		<Show when={auth.token && auth.user}>
-			{props.children}
-		</Show>
-	);
+	return <Show when={auth.token && auth.user}>{props.children}</Show>;
 };
 
 export default ProtectedRoute;

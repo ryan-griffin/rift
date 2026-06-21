@@ -1,13 +1,13 @@
 import {
-	Component,
+	type Component,
 	createContext,
 	createSignal,
-	JSX,
+	type JSX,
 	onCleanup,
 	onMount,
 	useContext,
 } from "solid-js";
-import { resolveAddress, WsClientMessage } from "../apiUtils.ts";
+import { resolveAddress, type WsClientMessage } from "../apiUtils.ts";
 import { useAuth } from "./Auth.tsx";
 
 interface WebSocketContextType {

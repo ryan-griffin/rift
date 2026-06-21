@@ -26,49 +26,49 @@ export interface Message extends CreateMessage {
 
 export type WsClientMessage =
 	| {
-		module: "messages";
-		type: "typing";
-		payload: { thread_id: number };
-	}
+			module: "messages";
+			type: "typing";
+			payload: { thread_id: number };
+	  }
 	| {
-		module: "messages";
-		type: "stop_typing";
-		payload: { thread_id: number };
-	}
+			module: "messages";
+			type: "stop_typing";
+			payload: { thread_id: number };
+	  }
 	| {
-		module: "messages";
-		type: "create_message";
-		payload: CreateMessage;
-	};
+			module: "messages";
+			type: "create_message";
+			payload: CreateMessage;
+	  };
 
 export type WsServerMessage =
 	| {
-		module: "messages";
-		type: "user_typing";
-		payload: { username: string; thread_id: number };
-	}
+			module: "messages";
+			type: "user_typing";
+			payload: { username: string; thread_id: number };
+	  }
 	| {
-		module: "messages";
-		type: "user_stopped_typing";
-		payload: { username: string; thread_id: number };
-	}
+			module: "messages";
+			type: "user_stopped_typing";
+			payload: { username: string; thread_id: number };
+	  }
 	| {
-		module: "messages";
-		type: "message_created";
-		payload: Message;
-	}
+			module: "messages";
+			type: "message_created";
+			payload: Message;
+	  }
 	| {
-		module: "users";
-		type: "user_created";
-		payload: User;
-	}
+			module: "users";
+			type: "user_created";
+			payload: User;
+	  }
 	| {
-		module: "system";
-		type: "error";
-		payload: string;
-	};
+			module: "system";
+			type: "error";
+			payload: string;
+	  };
 
 export const resolveAddress = (): string =>
-	(import.meta.env.VITE_API_CONTAINER_ADDRESS && isServer)
+	import.meta.env.VITE_API_CONTAINER_ADDRESS && isServer
 		? import.meta.env.VITE_API_CONTAINER_ADDRESS
 		: import.meta.env.VITE_API_ADDRESS;

@@ -1,7 +1,7 @@
-import { Component, createContext, JSX, useContext } from "solid-js";
 import { QueryClient, QueryClientProvider } from "@tanstack/solid-query";
-import { useAuth } from "./Auth.tsx";
+import { type Component, createContext, type JSX, useContext } from "solid-js";
 import { resolveAddress } from "../apiUtils.ts";
+import { useAuth } from "./Auth.tsx";
 
 type GetApi = <T>(url: string) => Promise<T>;
 type PostApi = <T>(url: string, body: unknown) => Promise<T>;
@@ -16,16 +16,12 @@ const ApiContext = createContext<ApiContextType>();
 export const useApi = () => {
 	const context = useContext(ApiContext);
 	if (!context) {
-		throw new Error(
-			"useApi must be used within an ApiProvider",
-		);
+		throw new Error("useApi must be used within an ApiProvider");
 	}
 	return context;
 };
 
-const ApiProvider: Component<{ children: JSX.Element }> = (
-	props,
-) => {
+const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
 	const { token, logout } = useAuth();
 	const queryClient = new QueryClient();
 
@@ -54,7 +50,8 @@ const ApiProvider: Component<{ children: JSX.Element }> = (
 
 	const getApi = <T,>(url: string) => api<T>("GET", url);
 
-	const postApi = <T,>(url: string, body: unknown) => api<T>("POST", url, body);
+	const postApi = <T,>(url: string, body: unknown) =>
+		api<T>("POST", url, body);
 
 	return (
 		<ApiContext.Provider value={{ getApi, postApi }}>

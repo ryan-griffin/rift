@@ -1,11 +1,11 @@
 import {
-	Component,
+	type Component,
 	createContext,
 	createSignal,
-	JSX,
+	type JSX,
 	useContext,
 } from "solid-js";
-import { resolveAddress, User } from "../apiUtils.ts";
+import { resolveAddress, type User } from "../apiUtils.ts";
 import {
 	deleteStorageItem,
 	getStorageItem,
@@ -52,14 +52,11 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		credentials: LoginCredentials | SignUpCredentials,
 	) => {
 		const address = resolveAddress();
-		const res = await fetch(
-			`http://${address}/api/${endpoint}`,
-			{
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify(credentials),
-			},
-		);
+		const res = await fetch(`http://${address}/api/${endpoint}`, {
+			method: "POST",
+			headers: { "Content-Type": "application/json" },
+			body: JSON.stringify(credentials),
+		});
 
 		if (res.ok) {
 			const data: AuthState = await res.json();
