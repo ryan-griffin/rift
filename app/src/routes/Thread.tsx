@@ -1,5 +1,8 @@
+import { useParams } from "@solidjs/router";
+import { useQuery, useQueryClient } from "@tanstack/solid-query";
+import markdownit from "markdown-it";
 import {
-	Component,
+	type Component,
 	createEffect,
 	createMemo,
 	createSignal,
@@ -10,24 +13,21 @@ import {
 	Suspense,
 } from "solid-js";
 import { createStore } from "solid-js/store";
-import { useParams } from "@solidjs/router";
-import { useQuery, useQueryClient } from "@tanstack/solid-query";
-import {
+import type {
 	CreateMessage,
 	DirectoryNode,
 	Message,
 	WsServerMessage,
 } from "../apiUtils.ts";
-import Button from "../components/Button.tsx";
-import { useApi } from "../components/Api.tsx";
-import { useWebSocket } from "../components/WebSocket.tsx";
-import SendHorizontal from "../assets/send-horizontal.svg";
-import Avatar from "../components/Avatar.tsx";
 import MessageSquareText from "../assets/message-square-text.svg";
-import { setStorageItem } from "../storageUtils.ts";
-import markdownit from "markdown-it";
-import X from "../assets/x.svg";
 import Reply from "../assets/reply.svg";
+import SendHorizontal from "../assets/send-horizontal.svg";
+import X from "../assets/x.svg";
+import { useApi } from "../components/Api.tsx";
+import Avatar from "../components/Avatar.tsx";
+import Button from "../components/Button.tsx";
+import { useWebSocket } from "../components/WebSocket.tsx";
+import { setStorageItem } from "../storageUtils.ts";
 
 const MESSAGE_GROUP_WINDOW_MS = 60 * 1000;
 const TYPING_TIMEOUT_MS = 3000;
@@ -45,8 +45,7 @@ const md = markdownit({
 });
 
 const mdClasses = {
-	"[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-bold [&_h1]:text-4xl [&_h2]:text-3xl [&_h3]:text-2xl [&_h4]:text-xl [&_h5]:text-lg":
-		true,
+	"[&_h1,&_h2,&_h3,&_h4,&_h5,&_h6]:font-bold [&_h1]:text-4xl [&_h2]:text-3xl [&_h3]:text-2xl [&_h4]:text-xl [&_h5]:text-lg": true,
 	"[&_a]:text-accent-500 [&_a:hover]:underline": true,
 	"[&_ol,&_ul]:pl-6 [&_ol>li,&_ul>li]:pl-1": true,
 	"[&_ol]:list-decimal [&_ul]:list-disc": true,
@@ -55,10 +54,12 @@ const mdClasses = {
 };
 
 const shouldGroupMessage = (anchor: Message, message: Message) => {
-	const timeDiff = new Date(message.created_at).getTime() -
+	const timeDiff =
+		new Date(message.created_at).getTime() -
 		new Date(anchor.created_at).getTime();
 
-	const parentBreak = message.parent_id !== null &&
+	const parentBreak =
+		message.parent_id !== null &&
 		(anchor.parent_id === null || anchor.parent_id !== message.parent_id);
 
 	return (
@@ -79,7 +80,8 @@ const buildMessagesState = (messages: Message[]): MessagesState => {
 		byId[message.id] = message;
 
 		if (
-			currentGroup.length && shouldGroupMessage(byId[currentGroup[0]], message)
+			currentGroup.length &&
+			shouldGroupMessage(byId[currentGroup[0]], message)
 		) {
 			currentGroup.push(message.id);
 		} else {
@@ -117,15 +119,13 @@ const appendMessageToState = (
 	return { byId, groups: newGroups, messageCount };
 };
 
-const MessageGroup: Component<
-	{
-		messagesById: Record<number, Message>;
-		groupIds: number[];
-		onMessageClick: (id: number) => void;
-	}
-> = (props) => {
+const MessageGroup: Component<{
+	messagesById: Record<number, Message>;
+	groupIds: number[];
+	onMessageClick: (id: number) => void;
+}> = (props) => {
 	const group = createMemo(() =>
-		props.groupIds.map((id) => props.messagesById[id])
+		props.groupIds.map((id) => props.messagesById[id]),
 	);
 	const anchor = () => group()[0];
 
@@ -175,7 +175,9 @@ const MessageGroup: Component<
 								<button
 									type="button"
 									class="hidden group-hover:block text-background-500 hover:text-background-600 dark:text-background-400 dark:hover:text-background-300 transition-colors duration-200 cursor-pointer"
-									onClick={() => props.onMessageClick(message.id)}
+									onClick={() =>
+										props.onMessageClick(message.id)
+									}
 								>
 									<Reply />
 								</button>
@@ -276,7 +278,9 @@ const Thread: Component = () => {
 					const payload = env.payload;
 					if (payload.thread_id !== Number(params.id)) return;
 					setTypingUsers((prev) =>
-						prev.includes(payload.username) ? prev : [...prev, payload.username]
+						prev.includes(payload.username)
+							? prev
+							: [...prev, payload.username],
 					);
 					break;
 				}
@@ -284,7 +288,7 @@ const Thread: Component = () => {
 					const payload = env.payload;
 					if (payload.thread_id !== Number(params.id)) return;
 					setTypingUsers((prev) =>
-						prev.filter((user) => user !== payload.username)
+						prev.filter((user) => user !== payload.username),
 					);
 					break;
 				}
@@ -349,7 +353,7 @@ const Thread: Component = () => {
 		setNewMessage({
 			directory_id: Number(params.id),
 			parent_id: null,
-		})
+		}),
 	);
 
 	const replyTarget = () => {
@@ -417,10 +421,18 @@ const Thread: Component = () => {
 	const handleGlobalKeydown = (e: KeyboardEvent) => {
 		if (document.activeElement === inputRef) return;
 		if (
-			e.ctrlKey || e.altKey || e.metaKey || e.key === "Tab" ||
-			e.key === "Escape" || e.key === "Enter" || e.key.startsWith("Arrow") ||
-			e.key.startsWith("F") || e.key === "Backspace" || e.key === "Delete"
-		) return;
+			e.ctrlKey ||
+			e.altKey ||
+			e.metaKey ||
+			e.key === "Tab" ||
+			e.key === "Escape" ||
+			e.key === "Enter" ||
+			e.key.startsWith("Arrow") ||
+			e.key.startsWith("F") ||
+			e.key === "Backspace" ||
+			e.key === "Delete"
+		)
+			return;
 
 		if (inputRef && e.key.length === 1) inputRef.focus();
 	};
@@ -428,7 +440,7 @@ const Thread: Component = () => {
 	onMount(() => {
 		document.addEventListener("keydown", handleGlobalKeydown);
 		onCleanup(() =>
-			document.removeEventListener("keydown", handleGlobalKeydown)
+			document.removeEventListener("keydown", handleGlobalKeydown),
 		);
 	});
 
@@ -466,7 +478,7 @@ const Thread: Component = () => {
 							<For each={messages.data?.groups}>
 								{(groupIds) => (
 									<MessageGroup
-										messagesById={messages.data!.byId}
+										messagesById={messages.data?.byId}
 										groupIds={groupIds}
 										onMessageClick={(id) => {
 											setNewMessage("parent_id", id);
@@ -482,12 +494,15 @@ const Thread: Component = () => {
 							<Show when={newMessage.parent_id}>
 								<div class="flex justify-between m-1 mb-0 p-2 bg-background-50 dark:bg-background-700 rounded-t-xl rounded-b-sm">
 									<p>
-										Replying to <b>{replyTarget()?.author_username}</b>
+										Replying to{" "}
+										<b>{replyTarget()?.author_username}</b>
 									</p>
 									<button
 										type="button"
 										class="text-background-500 hover:text-background-600 dark:text-background-400 dark:hover:text-background-300 transition-colors duration-200 cursor-pointer"
-										onClick={() => setNewMessage("parent_id", null)}
+										onClick={() =>
+											setNewMessage("parent_id", null)
+										}
 									>
 										<X />
 									</button>
@@ -502,8 +517,13 @@ const Thread: Component = () => {
 									value={newMessage.content}
 									onInput={(e) => {
 										const textarea = e.currentTarget;
-										setNewMessage("content", textarea.value);
-										textarea.value.trim() ? startTyping() : stopTyping();
+										setNewMessage(
+											"content",
+											textarea.value,
+										);
+										textarea.value.trim()
+											? startTyping()
+											: stopTyping();
 										textarea.style.height = "auto";
 										textarea.style.height = `${textarea.scrollHeight}px`;
 									}}

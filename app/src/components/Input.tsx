@@ -1,5 +1,5 @@
-import { Component, JSX } from "solid-js";
 import { Field } from "@ark-ui/solid/field";
+import type { Component, JSX } from "solid-js";
 
 interface Props {
 	placeholder?: string;

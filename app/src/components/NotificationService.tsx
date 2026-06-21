@@ -1,15 +1,15 @@
-import { Component, createEffect, onCleanup } from "solid-js";
-import { useWebSocket } from "./WebSocket.tsx";
-import { DirectoryNode, Message, WsServerMessage } from "../apiUtils.ts";
+import { useParams } from "@solidjs/router";
+import { useQuery } from "@tanstack/solid-query";
 import {
 	isPermissionGranted,
 	requestPermission,
 	sendNotification,
 } from "@tauri-apps/plugin-notification";
-import { useAuth } from "./Auth.tsx";
+import { type Component, createEffect, onCleanup } from "solid-js";
+import type { DirectoryNode, Message, WsServerMessage } from "../apiUtils.ts";
 import { useApi } from "./Api.tsx";
-import { useParams } from "@solidjs/router";
-import { useQuery } from "@tanstack/solid-query";
+import { useAuth } from "./Auth.tsx";
+import { useWebSocket } from "./WebSocket.tsx";
 
 const NotificationService: Component = () => {
 	const { onMessage } = useWebSocket();
@@ -33,14 +33,17 @@ const NotificationService: Component = () => {
 		const message = env.payload as Message;
 
 		if (
-			await permissionGranted() &&
-			(message.directory_id != Number(params.id) || !document.hasFocus()) &&
-			message.author_username != user?.username
+			(await permissionGranted()) &&
+			(message.directory_id !== Number(params.id) ||
+				!document.hasFocus()) &&
+			message.author_username !== user?.username
 		) {
 			const thread = useQuery(() => ({
 				queryKey: ["directory", message.directory_id],
 				queryFn: () =>
-					getApi<DirectoryNode[]>(`/directory/${message.directory_id}`),
+					getApi<DirectoryNode[]>(
+						`/directory/${message.directory_id}`,
+					),
 			}));
 
 			createEffect(() => {

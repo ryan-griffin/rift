@@ -1,7 +1,7 @@
-import { Component, createEffect } from "solid-js";
 import { useNavigate } from "@solidjs/router";
 import { useQuery } from "@tanstack/solid-query";
-import { DirectoryNode } from "../apiUtils.ts";
+import { type Component, createEffect } from "solid-js";
+import type { DirectoryNode } from "../apiUtils.ts";
 import { useApi } from "../components/Api.tsx";
 import { getStorageItem } from "../storageUtils.ts";
 

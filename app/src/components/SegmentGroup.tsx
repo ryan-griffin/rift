@@ -1,5 +1,5 @@
-import { Component, Index } from "solid-js";
 import { SegmentGroup as ArkSegmentGroup } from "@ark-ui/solid/segment-group";
+import { type Component, Index } from "solid-js";
 
 interface Props {
 	value: string;
@@ -26,7 +26,9 @@ const SegmentGroup: Component<Props> = (props) => {
 						value={item()}
 						class="z-10 flex-1 p-2 text-center rounded-lg cursor-pointer"
 					>
-						<ArkSegmentGroup.ItemText>{item()}</ArkSegmentGroup.ItemText>
+						<ArkSegmentGroup.ItemText>
+							{item()}
+						</ArkSegmentGroup.ItemText>
 						<ArkSegmentGroup.ItemControl />
 						<ArkSegmentGroup.ItemHiddenInput />
 					</ArkSegmentGroup.Item>

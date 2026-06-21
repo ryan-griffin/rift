@@ -15,9 +15,9 @@ const hexToRgb = (hex: string): [number, number, number] => {
 		const rgbValues = hex.match(/\d+/g);
 		if (rgbValues && rgbValues.length >= 3) {
 			return [
-				parseInt(rgbValues[0]),
-				parseInt(rgbValues[1]),
-				parseInt(rgbValues[2]),
+				parseInt(rgbValues[0], 10),
+				parseInt(rgbValues[1], 10),
+				parseInt(rgbValues[2], 10),
 			];
 		}
 	}
@@ -31,9 +31,9 @@ const hexToRgb = (hex: string): [number, number, number] => {
 };
 
 const rgbToHex = (r: number, g: number, b: number): string => {
-	return `#${Math.round(r).toString(16).padStart(2, "0")}${
-		Math.round(g).toString(16).padStart(2, "0")
-	}${Math.round(b).toString(16).padStart(2, "0")}`;
+	return `#${Math.round(r).toString(16).padStart(2, "0")}${Math.round(g)
+		.toString(16)
+		.padStart(2, "0")}${Math.round(b).toString(16).padStart(2, "0")}`;
 };
 
 const generateAccentPalette = (baseColor: string): Palette => {
@@ -81,9 +81,7 @@ const generateAccentPalette = (baseColor: string): Palette => {
 	return palette;
 };
 
-const generateBackgroundPalette = (
-	baseColor: string,
-): Palette => {
+const generateBackgroundPalette = (baseColor: string): Palette => {
 	const baseRgb = hexToRgb(baseColor);
 	const backgroundPalette: Palette = {};
 
@@ -102,9 +100,9 @@ const generateBackgroundPalette = (
 		"950": { grayValue: 15, intensity: 0.03 },
 	};
 
-	for (
-		const [shade, { grayValue, intensity }] of Object.entries(shadeValues)
-	) {
+	for (const [shade, { grayValue, intensity }] of Object.entries(
+		shadeValues,
+	)) {
 		// Add a hint of the base color
 		const r = grayValue + (baseRgb[0] - grayValue) * intensity;
 		const g = grayValue + (baseRgb[1] - grayValue) * intensity;

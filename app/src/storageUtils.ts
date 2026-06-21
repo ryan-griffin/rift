@@ -1,6 +1,6 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { isServer } from "solid-js/web";
 import { getCookie, setCookie } from "vinxi/http";
-import { isTauri } from "@tauri-apps/api/core";
 
 const MAX_COOKIE_AGE = 60 * 60 * 24 * 30;
 
@@ -19,7 +19,7 @@ export const getStorageItem = <T>(key: string): T | null => {
 	} else {
 		const cookies = document.cookie.split(";");
 		const matchingCookie = cookies.find((cookie) =>
-			cookie.trim().startsWith(`${key}=`)
+			cookie.trim().startsWith(`${key}=`),
 		);
 		if (!matchingCookie) return null;
 
@@ -42,9 +42,9 @@ export const setStorageItem = <T>(key: string, value: T) => {
 	} else if (isTauri()) {
 		localStorage.setItem(key, JSON.stringify(value));
 	} else {
-		document.cookie = `${key}=${
-			encodeURIComponent(JSON.stringify(value))
-		}; path=/; max-age=${MAX_COOKIE_AGE};`;
+		document.cookie = `${key}=${encodeURIComponent(
+			JSON.stringify(value),
+		)}; path=/; max-age=${MAX_COOKIE_AGE};`;
 	}
 };
 

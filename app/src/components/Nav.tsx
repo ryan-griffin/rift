@@ -1,10 +1,10 @@
-import { Component } from "solid-js";
-import Directory from "./Directory.tsx";
-import Button from "./Button.tsx";
-import Settings from "../assets/settings.svg";
 import { useNavigate } from "@solidjs/router";
+import type { Component } from "solid-js";
+import Settings from "../assets/settings.svg";
 import { useAuth } from "./Auth.tsx";
 import Avatar from "./Avatar.tsx";
+import Button from "./Button.tsx";
+import Directory from "./Directory.tsx";
 
 const Nav: Component = () => {
 	const navigate = useNavigate();

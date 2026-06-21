@@ -1,8 +1,8 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import Button from "./Button.tsx";
 import Minus from "../assets/minus.svg";
 import Square from "../assets/square.svg";
 import X from "../assets/x.svg";
+import Button from "./Button.tsx";
 
 const WindowControls = () => {
 	const currentWindow = getCurrentWindow();

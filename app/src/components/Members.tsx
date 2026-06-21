@@ -1,6 +1,6 @@
-import { Component, For, onCleanup, Suspense } from "solid-js";
 import { useQuery, useQueryClient } from "@tanstack/solid-query";
-import { User, WsServerMessage } from "../apiUtils.ts";
+import { type Component, For, onCleanup, Suspense } from "solid-js";
+import type { User, WsServerMessage } from "../apiUtils.ts";
 import { useApi } from "./Api.tsx";
 import Avatar from "./Avatar.tsx";
 import { useWebSocket } from "./WebSocket.tsx";
@@ -28,10 +28,10 @@ const Members: Component = () => {
 		const env: WsServerMessage = JSON.parse(event.data);
 
 		if (env.module === "users" && env.type === "user_created") {
-			queryClient.setQueryData<User[]>(
-				["users"],
-				(prev) => [...(prev ?? []), env.payload],
-			);
+			queryClient.setQueryData<User[]>(["users"], (prev) => [
+				...(prev ?? []),
+				env.payload,
+			]);
 		}
 	});
 	onCleanup(removeHandler);
