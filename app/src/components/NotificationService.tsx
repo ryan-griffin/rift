@@ -47,9 +47,10 @@ const NotificationService: Component = () => {
 			}));
 
 			createEffect(() => {
-				if (!thread.data) return;
+				const data = thread.data;
+				if (!data) return;
 				sendNotification({
-					title: `#${thread.data[0].name} — ${message.author_username}`,
+					title: `#${data[0]?.name ?? "Unknown"} — ${message.author_username}`,
 					body: message.content,
 					group: message.directory_id.toString(),
 				});

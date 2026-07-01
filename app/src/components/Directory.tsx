@@ -70,7 +70,9 @@ const DirectoryItem: Component<TreeView.NodeProviderProps<TreeNode>> = (
 						<TreeView.BranchText
 							class={`${nodeClass} hover:bg-background-200 dark:hover:bg-background-800 group text-background-400 dark:text-background-500 font-bold`}
 						>
-							<ChevronRight class="group-data-[state=open]:rotate-90 transition-transform duration-200" />
+							<span class="group-data-[state=open]:rotate-90 transition-transform duration-200">
+								<ChevronRight />
+							</span>
 							{props.node.name}
 						</TreeView.BranchText>
 					</TreeView.BranchControl>

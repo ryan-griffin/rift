@@ -10,6 +10,7 @@ const WindowControls = () => {
 	return (
 		<div class="w-full flex p-1 select-none">
 			<div
+				role="none"
 				data-tauri-drag-region
 				class="w-full"
 				onMouseDown={(e) => {
