@@ -42,6 +42,7 @@ export const setStorageItem = <T>(key: string, value: T) => {
 	} else if (isTauri()) {
 		localStorage.setItem(key, JSON.stringify(value));
 	} else {
+		// biome-ignore lint/suspicious/noDocumentCookie: no Cookie Store API available in this context
 		document.cookie = `${key}=${encodeURIComponent(
 			JSON.stringify(value),
 		)}; path=/; max-age=${MAX_COOKIE_AGE};`;
@@ -59,6 +60,7 @@ export const deleteStorageItem = (key: string) => {
 	} else if (isTauri()) {
 		localStorage.removeItem(key);
 	} else {
+		// biome-ignore lint/suspicious/noDocumentCookie: no Cookie Store API available in this context
 		document.cookie = `${key}=; path=/; max-age=-1;`;
 	}
 };

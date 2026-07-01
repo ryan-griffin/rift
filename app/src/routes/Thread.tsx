@@ -72,17 +72,17 @@ const shouldGroupMessage = (anchor: Message, message: Message) => {
 const buildMessagesState = (messages: Message[]): MessagesState => {
 	const byId: Record<number, Message> = {};
 	const groups: number[][] = [];
-	if (!messages.length) return { byId, groups, messageCount: 0 };
+	if (messages.length === 0) return { byId, groups, messageCount: 0 };
 
 	let currentGroup: number[] = [];
 
 	for (const message of messages) {
 		byId[message.id] = message;
 
-		if (
-			currentGroup.length &&
-			shouldGroupMessage(byId[currentGroup[0]], message)
-		) {
+		const anchorId = currentGroup[0];
+		const anchorMessage =
+			anchorId !== undefined ? byId[anchorId] : undefined;
+		if (anchorMessage && shouldGroupMessage(anchorMessage, message)) {
 			currentGroup.push(message.id);
 		} else {
 			if (currentGroup.length) groups.push(currentGroup);
@@ -102,12 +102,20 @@ const appendMessageToState = (
 	const byId = { ...state.byId, [message.id]: message };
 	const messageCount = state.messageCount + 1;
 
-	if (!state.groups.length) {
-		return { byId, groups: [[message.id]], messageCount };
-	}
+	const fallbackState: MessagesState = {
+		byId,
+		groups: [[message.id]],
+		messageCount,
+	};
 
-	const lastGroup = state.groups[state.groups.length - 1];
-	const anchor = state.byId[lastGroup[0]];
+	if (state.groups.length === 0) return fallbackState;
+
+	const lastGroup = state.groups.at(-1);
+	if (lastGroup === undefined) return fallbackState;
+	const anchorId = lastGroup[0];
+	if (anchorId === undefined) return fallbackState;
+	const anchor = state.byId[anchorId];
+	if (anchor === undefined) return fallbackState;
 
 	if (shouldGroupMessage(anchor, message)) {
 		const newGroups = [...state.groups];
@@ -125,14 +133,18 @@ const MessageGroup: Component<{
 	onMessageClick: (id: number) => void;
 }> = (props) => {
 	const group = createMemo(() =>
-		props.groupIds.map((id) => props.messagesById[id]),
+		props.groupIds.reduce((acc, id) => {
+			const message = props.messagesById[id];
+			if (message) acc.push(message);
+			return acc;
+		}, [] as Message[]),
 	);
 	const anchor = () => group()[0];
 
 	const parentMessage = () => {
-		const parentId = anchor().parent_id;
-		if (parentId === null) return null;
-		return props.messagesById[parentId] ?? null;
+		const a = anchor();
+		if (a === undefined || a.parent_id === null) return null;
+		return props.messagesById[a.parent_id];
 	};
 
 	return (
@@ -152,16 +164,18 @@ const MessageGroup: Component<{
 			</Show>
 			<div class="flex gap-4">
 				<Avatar
-					fallback={anchor().author_username[0]}
+					fallback={anchor()?.author_username[0]}
 					className="h-12"
 				/>
 				<div class="flex flex-col grow">
 					<div class="flex gap-2 items-center">
 						<p class="text-accent-500 font-semibold">
-							{anchor().author_username}
+							{anchor()?.author_username}
 						</p>
 						<p class="text-sm text-background-400 dark:text-background-500">
-							{new Date(anchor().created_at).toLocaleString()}
+							{new Date(
+								anchor()?.created_at ?? "",
+							).toLocaleString()}
 						</p>
 					</div>
 					<For each={group()}>
@@ -306,7 +320,7 @@ const Thread: Component = () => {
 	});
 
 	const [isTyping, setIsTyping] = createSignal(false);
-	let isTypingTimeout: number | undefined;
+	let isTypingTimeout: ReturnType<typeof setTimeout> | undefined;
 
 	const startTyping = () => {
 		if (!isTyping()) {
@@ -478,7 +492,7 @@ const Thread: Component = () => {
 							<For each={messages.data?.groups}>
 								{(groupIds) => (
 									<MessageGroup
-										messagesById={messages.data?.byId}
+										messagesById={messages.data?.byId ?? {}}
 										groupIds={groupIds}
 										onMessageClick={(id) => {
 											setNewMessage("parent_id", id);

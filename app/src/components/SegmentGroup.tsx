@@ -14,8 +14,9 @@ const SegmentGroup: Component<Props> = (props) => {
 		<ArkSegmentGroup.Root
 			value={props.value}
 			onValueChange={(e) => {
-				props.setValue(e.value!);
-				props.onChange?.(e.value!);
+				if (e.value == null) return;
+				props.setValue(e.value);
+				props.onChange?.(e.value);
 			}}
 			class={`flex p-1 gap-1 rounded-xl bg-background-100 dark:bg-background-800 ${props.className}`}
 		>

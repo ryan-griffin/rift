@@ -15,9 +15,9 @@ const hexToRgb = (hex: string): [number, number, number] => {
 		const rgbValues = hex.match(/\d+/g);
 		if (rgbValues && rgbValues.length >= 3) {
 			return [
-				parseInt(rgbValues[0], 10),
-				parseInt(rgbValues[1], 10),
-				parseInt(rgbValues[2], 10),
+				parseInt(rgbValues[0] ?? "0", 10),
+				parseInt(rgbValues[1] ?? "0", 10),
+				parseInt(rgbValues[2] ?? "0", 10),
 			];
 		}
 	}

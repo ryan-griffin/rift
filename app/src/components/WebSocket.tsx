@@ -37,8 +37,11 @@ const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
 		ws.onopen = () => setSocket(ws);
 		ws.onclose = () => setSocket(null);
 		ws.onerror = (error) => console.error("WebSocket error:", error);
-		ws.onmessage = (event) =>
-			messageHandlers.forEach((handler) => handler(event));
+		ws.onmessage = (event) => {
+			messageHandlers.forEach((handler) => {
+				handler(event);
+			});
+		};
 	};
 
 	const disconnect = () => {
