@@ -32,4 +32,6 @@ build-desktop:
 	bun run --cwd=app tauri build
 
 fmt:
-	cargo fmt
+	cd api && cargo fmt
+	cd app/src-tauri && cargo fmt
+	cd app && bun format
