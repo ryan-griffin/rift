@@ -1,0 +1,105 @@
+name: Build Containers
+
+on:
+    workflow_dispatch:
+
+env:
+    REGISTRY: ghcr.io
+    API_PORT: 8080
+    APP_PORT: 8081
+    API_HOST: localhost
+    API_CONTAINER: api
+
+permissions:
+    contents: read
+    packages: write
+
+jobs:
+    build-api:
+        name: Build API
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v4
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata for API
+              id: meta-api
+              uses: docker/metadata-action@v6
+              with:
+                  images: ${{ env.REGISTRY }}/${{ github.repository }}/api
+                  tags: |
+                      type=raw,value=latest,enable={{is_default_branch}}
+                      type=sha,format=short
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v4
+
+            - name: Build and push API
+              uses: docker/build-push-action@v7
+              with:
+                  context: api
+                  file: api/Dockerfile
+                  push: true
+                  tags: ${{ steps.meta-api.outputs.tags }}
+                  labels: ${{ steps.meta-api.outputs.labels }}
+                  build-args: |
+                      API_PORT=${{ env.API_PORT }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
+
+    build-app:
+        name: Build App
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - uses: oven-sh/setup-bun@v2
+
+            - name: Install dependencies
+              run: bun install
+              working-directory: app
+
+            - name: Run App checks
+              run: bun run check
+              working-directory: app
+
+            - name: Log in to GitHub Container Registry
+              uses: docker/login-action@v4
+              with:
+                  registry: ${{ env.REGISTRY }}
+                  username: ${{ github.actor }}
+                  password: ${{ secrets.GITHUB_TOKEN }}
+
+            - name: Extract metadata for App
+              id: meta-app
+              uses: docker/metadata-action@v6
+              with:
+                  images: ${{ env.REGISTRY }}/${{ github.repository }}/app
+                  tags: |
+                      type=raw,value=latest,enable={{is_default_branch}}
+                      type=sha,format=short
+
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v4
+
+            - name: Build and push App
+              uses: docker/build-push-action@v7
+              with:
+                  context: app
+                  file: app/Dockerfile
+                  push: true
+                  tags: ${{ steps.meta-app.outputs.tags }}
+                  labels: ${{ steps.meta-app.outputs.labels }}
+                  build-args: |
+                      API_HOST=${{ env.API_HOST }}
+                      API_PORT=${{ env.API_PORT }}
+                      API_CONTAINER=${{ env.API_CONTAINER }}
+                      APP_PORT=${{ env.APP_PORT }}
+                  cache-from: type=gha
+                  cache-to: type=gha,mode=max
