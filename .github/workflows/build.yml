@@ -37,6 +37,9 @@ jobs:
                       type=raw,value=latest,enable={{is_default_branch}}
                       type=sha,format=short
 
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v4
+
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
 
@@ -45,6 +48,7 @@ jobs:
               with:
                   context: api
                   file: api/Dockerfile
+                  platforms: linux/amd64,linux/arm64
                   push: true
                   tags: ${{ steps.meta-api.outputs.tags }}
                   labels: ${{ steps.meta-api.outputs.labels }}
@@ -85,6 +89,9 @@ jobs:
                       type=raw,value=latest,enable={{is_default_branch}}
                       type=sha,format=short
 
+            - name: Set up QEMU
+              uses: docker/setup-qemu-action@v4
+
             - name: Set up Docker Buildx
               uses: docker/setup-buildx-action@v4
 
@@ -93,6 +100,7 @@ jobs:
               with:
                   context: app
                   file: app/Dockerfile
+                  platforms: linux/amd64,linux/arm64
                   push: true
                   tags: ${{ steps.meta-app.outputs.tags }}
                   labels: ${{ steps.meta-app.outputs.labels }}
