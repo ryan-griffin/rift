@@ -1,4 +1,4 @@
-FROM docker.io/library/rust:latest as builder
+FROM docker.io/library/rust:latest AS builder
 
 WORKDIR /api
 

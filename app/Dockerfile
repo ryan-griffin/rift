@@ -1,4 +1,4 @@
-FROM docker.io/oven/bun:latest as builder
+FROM docker.io/oven/bun:latest AS builder
 
 WORKDIR /app
 
