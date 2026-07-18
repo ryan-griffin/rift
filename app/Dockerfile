@@ -15,7 +15,7 @@ ARG API_CONTAINER
 ENV VITE_API_ADDRESS=${API_HOST}:${API_PORT}
 ENV VITE_API_CONTAINER_ADDRESS=${API_CONTAINER}:${API_PORT}
 
-RUN bun run build
+RUN bun run vinxi build
 
 FROM docker.io/oven/bun:latest
 
