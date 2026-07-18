@@ -1,0 +1,19 @@
+services:
+    api:
+        build:
+            context: ./api
+            dockerfile: Dockerfile
+            args:
+                API_PORT: ${API_PORT}
+        pull_policy: build
+
+    app:
+        build:
+            context: ./app
+            dockerfile: Dockerfile
+            args:
+                API_HOST: ${API_HOST}
+                API_PORT: ${API_PORT}
+                API_CONTAINER: api
+                APP_PORT: ${APP_PORT}
+        pull_policy: build
