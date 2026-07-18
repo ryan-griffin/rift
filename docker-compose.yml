@@ -14,14 +14,15 @@ services:
 
     api:
         image: ghcr.io/ryan-griffin/rift/api:latest
-        env_file:
-            - .env
         environment:
             DATABASE_URL: postgres://postgres@database
-            API_HOST: 0.0.0.0
+            JWT_SECRET: ${JWT_SECRET}
+            API_HOST: api
+            API_PORT: 8080
             APP_HOST: app
+            APP_PORT: 8080
         ports:
-            - "${API_PORT}:${API_PORT}"
+            - "${BIND_HOST}:${BIND_PORT}:8080"
         depends_on:
             database:
                 condition: service_healthy
@@ -31,7 +32,10 @@ services:
         image: ghcr.io/ryan-griffin/rift/app:latest
         environment:
             HOST: app
-            PORT: ${APP_PORT}
+            PORT: 8080
+            API_HOST: ${API_HOST}
+            API_PORT: 8080
+            API_INTERNAL_HOST: api
         depends_on:
             api:
                 condition: service_started
