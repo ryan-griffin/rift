@@ -5,10 +5,6 @@ on:
 
 env:
     REGISTRY: ghcr.io
-    API_PORT: 8080
-    APP_PORT: 8081
-    API_HOST: localhost
-    API_CONTAINER: api
 
 permissions:
     contents: read
@@ -52,8 +48,6 @@ jobs:
                   push: true
                   tags: ${{ steps.meta-api.outputs.tags }}
                   labels: ${{ steps.meta-api.outputs.labels }}
-                  build-args: |
-                      API_PORT=${{ env.API_PORT }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
 
@@ -104,10 +98,5 @@ jobs:
                   push: true
                   tags: ${{ steps.meta-app.outputs.tags }}
                   labels: ${{ steps.meta-app.outputs.labels }}
-                  build-args: |
-                      API_HOST=${{ env.API_HOST }}
-                      API_PORT=${{ env.API_PORT }}
-                      API_CONTAINER=${{ env.API_CONTAINER }}
-                      APP_PORT=${{ env.APP_PORT }}
                   cache-from: type=gha
                   cache-to: type=gha,mode=max

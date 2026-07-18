@@ -15,8 +15,6 @@ WORKDIR /api
 
 COPY --from=builder /api/target/release/api ./
 
-ARG API_PORT
-
-EXPOSE ${API_PORT}
+EXPOSE 8080
 
 CMD ["./api"]

@@ -15,6 +15,9 @@ export default createHandler(() => (
 				</head>
 				<body class="bg-background-100 text-background-950 dark:text-background-50 dark:bg-background-950">
 					<div id="app">{children}</div>
+					<script
+						innerHTML={`window.__API_ADDRESS__=${JSON.stringify(`${process.env.API_HOST}:${process.env.API_PORT}`)}`}
+					/>
 					{scripts}
 				</body>
 			</html>

@@ -69,6 +69,6 @@ export type WsServerMessage =
 	  };
 
 export const resolveAddress = (): string =>
-	import.meta.env.VITE_API_CONTAINER_ADDRESS && isServer
-		? import.meta.env.VITE_API_CONTAINER_ADDRESS
-		: import.meta.env.VITE_API_ADDRESS;
+	isServer
+		? `${process.env.API_INTERNAL_HOST || process.env.API_HOST}:${process.env.API_PORT}`
+		: window.__API_ADDRESS__ || import.meta.env.VITE_API_ADDRESS;
