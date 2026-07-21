@@ -36,6 +36,8 @@ services:
             API_HOST: ${API_HOST}
             API_PORT: 8080
             API_INTERNAL_HOST: api
+            BIND_HOST: ${BIND_HOST}
+            BIND_PORT: ${BIND_PORT}
         depends_on:
             api:
                 condition: service_started
