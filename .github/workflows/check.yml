@@ -1,0 +1,76 @@
+name: Check
+
+on:
+    pull_request:
+        branches: [main]
+
+jobs:
+    check-api:
+        name: Check API
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Cache cargo
+              uses: actions/cache@v5
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      api/target
+                  key: ${{ runner.os }}-cargo-api-${{ hashFiles('api/Cargo.lock') }}
+
+            - name: Check
+              run: cargo check
+              working-directory: api
+
+            - name: Clippy
+              run: cargo clippy -- -D warnings
+              working-directory: api
+
+            - name: Check formatting
+              run: cargo fmt --check
+              working-directory: api
+
+    check-app:
+        name: Check App
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - uses: oven-sh/setup-bun@v2
+
+            - name: Install dependencies
+              run: bun install
+              working-directory: app
+
+            - name: Run checks
+              run: bun run check
+              working-directory: app
+
+    check-app-tauri:
+        name: Check App Tauri
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v7
+
+            - name: Cache cargo
+              uses: actions/cache@v5
+              with:
+                  path: |
+                      ~/.cargo/registry
+                      ~/.cargo/git
+                      app/src-tauri/target
+                  key: ${{ runner.os }}-cargo-tauri-${{ hashFiles('app/src-tauri/Cargo.lock') }}
+
+            - name: Check
+              run: cargo check
+              working-directory: app/src-tauri
+
+            - name: Clippy
+              run: cargo clippy -- -D warnings
+              working-directory: app/src-tauri
+
+            - name: Check formatting
+              run: cargo fmt --check
+              working-directory: app/src-tauri
