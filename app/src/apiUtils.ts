@@ -68,7 +68,21 @@ export type WsServerMessage =
 			payload: string;
 	  };
 
-export const resolveAddress = (): string =>
-	isServer
-		? `${process.env.API_INTERNAL_HOST || process.env.API_HOST}:${process.env.API_PORT}`
-		: window.__API_ADDRESS__ || import.meta.env.VITE_API_ADDRESS;
+export const resolveAddress = () => {
+	if (!isServer) {
+		return window.__API_ADDRESS__ || import.meta.env.VITE_API_ADDRESS;
+	}
+
+	const { API_INTERNAL_HOST, API_INTERNAL_PORT, API_HOST, API_PORT } =
+		process.env;
+
+	if (API_INTERNAL_HOST && API_INTERNAL_PORT) {
+		return `${API_INTERNAL_HOST}:${API_INTERNAL_PORT}`;
+	}
+
+	if (API_HOST && API_PORT) {
+		return `${API_HOST}:${API_PORT}`;
+	}
+
+	throw new Error("API address not found");
+};

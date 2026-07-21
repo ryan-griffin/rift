@@ -33,9 +33,10 @@ services:
         environment:
             HOST: app
             PORT: 8080
-            API_HOST: ${API_HOST}
-            API_PORT: 8080
             API_INTERNAL_HOST: api
+            API_INTERNAL_PORT: 8080
+            API_HOST: ${API_HOST}
+            API_PORT: ${API_PORT}
         depends_on:
             api:
                 condition: service_started
