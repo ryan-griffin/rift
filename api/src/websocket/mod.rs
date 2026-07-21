@@ -183,7 +183,7 @@ pub async fn handle_socket(
 							}
 						} else if let Err(err) = send_error_to_client(
 							&sender,
-							&format!("Unknown module: {}", &env.module)
+							&format!("Unknown module: {}", env.module)
 						).await {
 							eprintln!("{err}");
 							break;
