@@ -52,20 +52,26 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		credentials: LoginCredentials | SignUpCredentials,
 	) => {
 		const address = resolveAddress();
-		const res = await fetch(`http://${address}/api/${endpoint}`, {
-			method: "POST",
-			headers: { "Content-Type": "application/json" },
-			body: JSON.stringify(credentials),
-		});
+		if (!address) return false;
 
-		if (res.ok) {
-			const data: AuthState = await res.json();
-			setState(data);
-			setStorageItem("auth", data);
-			return true;
+		try {
+			const res = await fetch(`http://${address}/api/${endpoint}`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify(credentials),
+			});
+
+			if (res.ok) {
+				const data: AuthState = await res.json();
+				setState(data);
+				setStorageItem("auth", data);
+				return true;
+			}
+
+			return false;
+		} catch {
+			return false;
 		}
-
-		return false;
 	};
 
 	const logout = () => {

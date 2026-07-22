@@ -32,6 +32,7 @@ const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
 
 	const connect = () => {
 		const address = resolveAddress();
+		if (!address) throw new Error("API address not found");
 		const ws = new WebSocket(`ws://${address}/api/ws?token=${token}`);
 
 		ws.onopen = () => setSocket(ws);

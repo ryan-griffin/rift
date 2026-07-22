@@ -7,10 +7,6 @@ if (task === "dev" || task === "start") {
 	env.PORT = env.APP_PORT;
 }
 
-if (task === "dev" || task === "build") {
-	env.VITE_API_ADDRESS = `${env.API_HOST}:${env.API_PORT}`;
-}
-
 Bun.spawn(["bun", "run", "vinxi", task as string], {
 	env,
 	stdout: "inherit",
