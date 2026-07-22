@@ -1,4 +1,6 @@
+import { isTauri } from "@tauri-apps/api/core";
 import { isServer } from "solid-js/web";
+import { getStorageItem } from "./storageUtils";
 
 export interface User {
 	username: string;
@@ -69,20 +71,22 @@ export type WsServerMessage =
 	  };
 
 export const resolveAddress = () => {
-	if (!isServer) {
-		return window.__API_ADDRESS__ || import.meta.env.VITE_API_ADDRESS;
+	if (isServer) {
+		const { API_INTERNAL_HOST, API_INTERNAL_PORT } = process.env;
+		if (API_INTERNAL_HOST && API_INTERNAL_PORT) {
+			return `${API_INTERNAL_HOST}:${API_INTERNAL_PORT}`;
+		}
+
+		const { API_HOST, API_PORT } = process.env;
+		if (API_HOST && API_PORT) {
+			return `${API_HOST}:${API_PORT}`;
+		}
+	} else {
+		if (isTauri()) {
+			const address = getStorageItem<string>("address");
+			if (address) return address;
+		} else if (window.__API_ADDRESS__) {
+			return window.__API_ADDRESS__;
+		}
 	}
-
-	const { API_INTERNAL_HOST, API_INTERNAL_PORT, API_HOST, API_PORT } =
-		process.env;
-
-	if (API_INTERNAL_HOST && API_INTERNAL_PORT) {
-		return `${API_INTERNAL_HOST}:${API_INTERNAL_PORT}`;
-	}
-
-	if (API_HOST && API_PORT) {
-		return `${API_HOST}:${API_PORT}`;
-	}
-
-	throw new Error("API address not found");
 };

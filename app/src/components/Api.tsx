@@ -31,6 +31,8 @@ const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
 		body?: unknown,
 	): Promise<T> => {
 		const address = resolveAddress();
+		if (!address) throw new Error("API address not found");
+
 		const options: RequestInit = {
 			method,
 			headers: {

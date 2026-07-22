@@ -1,10 +1,29 @@
 import { useNavigate } from "@solidjs/router";
-import { type Component, createSignal } from "solid-js";
+import { isTauri } from "@tauri-apps/api/core";
+import { type Component, createSignal, Show } from "solid-js";
 import { createStore } from "solid-js/store";
 import { useAuth } from "../components/Auth.tsx";
 import Button from "../components/Button.tsx";
 import Input from "../components/Input.tsx";
 import SegmentGroup from "../components/SegmentGroup.tsx";
+import { getStorageItem, setStorageItem } from "../storageUtils.ts";
+
+const AddressField: Component = () => {
+	const [address, setAddress] = createSignal<string>(
+		getStorageItem("address") || "",
+	);
+
+	return (
+		<Input
+			placeholder="Server Address"
+			value={address()}
+			onInput={(e) => {
+				setAddress(e.currentTarget.value);
+				setStorageItem("address", e.currentTarget.value);
+			}}
+		/>
+	);
+};
 
 const Login: Component = () => {
 	const navigate = useNavigate();
@@ -18,7 +37,12 @@ const Login: Component = () => {
 		e.preventDefault();
 		switch (segment()) {
 			case "Login":
-				if (state.username && state.password && (await login(state))) {
+				if (
+					state.username &&
+					state.password &&
+					(!isTauri() || getStorageItem<string>("address")) &&
+					(await login(state))
+				) {
 					navigate("/");
 				} else {
 					alert("Login failed. Please try again.");
@@ -28,6 +52,7 @@ const Login: Component = () => {
 				if (
 					state.username &&
 					state.password &&
+					(!isTauri() || getStorageItem<string>("address")) &&
 					(await signup({ name: state.username, ...state }))
 				) {
 					navigate("/");
@@ -49,6 +74,9 @@ const Login: Component = () => {
 					setValue={setSegment}
 					items={["Login", "Sign Up"]}
 				/>
+				<Show when={isTauri()}>
+					<AddressField />
+				</Show>
 				<Input
 					placeholder="Username"
 					value={state.username}

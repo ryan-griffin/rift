@@ -2,7 +2,7 @@
 	"type": "module",
 	"scripts": {
 		"dev": "bun run --env-file=../.env set-env.ts dev",
-		"build": "bun run --env-file=../.env set-env.ts build",
+		"build": "vinxi build",
 		"start": "bun run --env-file=../.env set-env.ts start",
 		"tauri": "tauri",
 		"lint": "biome lint",
