@@ -1,4 +1,5 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
+import Logo from "../assets/logo.svg";
 import Minus from "../assets/minus.svg";
 import Square from "../assets/square.svg";
 import X from "../assets/x.svg";
@@ -21,7 +22,10 @@ const WindowControls = () => {
 					}
 				}}
 			>
-				<p class="p-2 font-bold">Rift</p>
+				<div class="flex items-center p-2 gap-2">
+					<Logo />
+					<p class="font-bold">Rift</p>
+				</div>
 			</div>
 			<Button
 				variant="flat"
