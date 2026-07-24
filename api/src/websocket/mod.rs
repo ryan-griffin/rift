@@ -1,7 +1,7 @@
 mod messages;
 mod users;
 
-use anyhow::{Context, Error, Result, anyhow};
+use anyhow::{Result, anyhow};
 use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures_util::{
 	SinkExt, StreamExt,
@@ -119,17 +119,27 @@ impl WsState {
 	}
 }
 
-async fn receive_msg_from_client(
-	receiver: &mut SplitStream<WebSocket>,
-) -> Option<Result<Option<WsEnvelope>>> {
+enum ClientEvent {
+	Message(WsEnvelope),
+	Disconnect,
+	Continue,
+}
+
+async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> ClientEvent {
 	match receiver.next().await {
-		Some(Ok(WsMessage::Text(text))) => {
-			let result = serde_json::from_str(&text).context("Invalid message");
-			Some(result.map(Some))
+		Some(Ok(WsMessage::Text(text))) => match serde_json::from_str(&text) {
+			Ok(env) => ClientEvent::Message(env),
+			Err(err) => {
+				eprintln!("Invalid message from client: {err}");
+				ClientEvent::Continue
+			}
+		},
+		Some(Ok(WsMessage::Close(_))) | None => ClientEvent::Disconnect,
+		Some(Ok(_)) => ClientEvent::Continue,
+		Some(Err(err)) => {
+			eprintln!("WebSocket error: {err}");
+			ClientEvent::Disconnect
 		}
-		Some(Ok(WsMessage::Close(_))) => Some(Ok(None)),
-		Some(Err(err)) => Some(Err(Error::from(err).context("WebSocket error"))),
-		_ => None,
 	}
 }
 
@@ -172,7 +182,7 @@ pub async fn handle_socket(
 		tokio::select! {
 			msg = receive_msg_from_client(&mut receiver) => {
 				match msg {
-					Some(Ok(Some(env))) => {
+					ClientEvent::Message(env) => {
 						if let Some(module) = state.modules.get(env.module.as_str()) {
 							if let Err(err) = module.handle(&ctx, &env.r#type, &env.payload).await {
 								eprintln!("{err}");
@@ -189,9 +199,8 @@ pub async fn handle_socket(
 							break;
 						}
 					}
-					Some(Ok(None)) => break,
-					Some(Err(err)) => eprintln!("{err}"),
-					_ => {}
+					ClientEvent::Disconnect => break,
+					ClientEvent::Continue => {},
 				}
 			}
 
