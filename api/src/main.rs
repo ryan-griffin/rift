@@ -115,7 +115,10 @@ async fn proxy(
 				}
 			}
 
-			Ok(builder.body(Body::from(body)).unwrap())
+			Ok(builder.body(Body::from(body)).map_err(|err| {
+				eprintln!("Failed to build response body: {err}");
+				StatusCode::INTERNAL_SERVER_ERROR
+			})?)
 		}
 		Err(err) => {
 			eprintln!("Proxy error for {}: {}", proxy_url, err);
