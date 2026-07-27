@@ -135,7 +135,12 @@ pub async fn signup(
 		Ok(hash) => user.password = hash,
 		Err(err) => {
 			eprintln!("{err}");
-			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
+			return Err(if err.to_string().contains("exceeds maximum length") {
+				StatusCode::BAD_REQUEST
+			} else {
+				StatusCode::INTERNAL_SERVER_ERROR
+			}
+			.into());
 		}
 	};
 
