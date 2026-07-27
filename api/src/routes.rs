@@ -11,6 +11,7 @@ use axum::{
 	http::StatusCode,
 	response::{Response, Result},
 };
+use sea_orm::DbErr;
 
 pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>> {
 	match db::get_users(&app_state.conn).await {
@@ -30,7 +31,11 @@ pub async fn get_user(
 		Ok(user) => Ok(Json(user)),
 		Err(err) => {
 			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+			Err(match &err {
+				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
+				_ => StatusCode::INTERNAL_SERVER_ERROR,
+			}
+			.into())
 		}
 	}
 }
@@ -43,7 +48,11 @@ pub async fn get_directory(
 		Ok(directory) => Ok(Json(directory)),
 		Err(err) => {
 			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+			Err(match &err {
+				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
+				_ => StatusCode::INTERNAL_SERVER_ERROR,
+			}
+			.into())
 		}
 	}
 }
@@ -82,7 +91,11 @@ pub async fn get_message(
 		Ok(message) => Ok(Json(message)),
 		Err(err) => {
 			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
+			Err(match &err {
+				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
+				_ => StatusCode::INTERNAL_SERVER_ERROR,
+			}
+			.into())
 		}
 	}
 }
@@ -96,7 +109,10 @@ pub async fn create_message(
 		.await
 		.map_err(|e| {
 			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
+			match &e {
+				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
+				_ => StatusCode::INTERNAL_SERVER_ERROR,
+			}
 		})?;
 
 	app_state
