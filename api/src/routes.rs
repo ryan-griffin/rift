@@ -141,7 +141,10 @@ pub async fn signup(
 
 	let created_user = db::create_user(&app_state.conn, user).await.map_err(|e| {
 		eprintln!("{e}");
-		StatusCode::INTERNAL_SERVER_ERROR
+		match &e {
+			DbErr::Custom(msg) if msg == "Username already taken" => StatusCode::CONFLICT,
+			_ => StatusCode::INTERNAL_SERVER_ERROR,
+		}
 	})?;
 
 	app_state

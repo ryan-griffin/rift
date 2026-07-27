@@ -23,6 +23,16 @@ pub async fn get_user(db: &DatabaseConnection, username: &str) -> Result<User, D
 }
 
 pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, DbErr> {
+	// Check if username already exists to provide a clear conflict error
+	let existing = users::Entity::find()
+		.filter(users::Column::Username.eq(&user.username))
+		.one(db)
+		.await?;
+
+	if existing.is_some() {
+		return Err(DbErr::Custom("Username already taken".to_string()));
+	}
+
 	users::ActiveModel {
 		username: Set(user.username),
 		name: Set(user.name),
@@ -30,6 +40,11 @@ pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, Db
 	}
 	.insert(db)
 	.await
+	.map_err(|e| match &e {
+		// Catch race-condition duplicates that bypassed the pre-check (e.g. concurrent signups)
+		DbErr::Exec(_) => DbErr::Custom("Username already taken".to_string()),
+		_ => e,
+	})
 }
 
 pub async fn get_directory(db: &DatabaseConnection, id: i32) -> Result<Vec<Directory>, DbErr> {
