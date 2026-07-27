@@ -1,13 +1,12 @@
 use crate::db;
 use crate::entity;
-use anyhow::{Context, Error, Result};
+use anyhow::{Context, Error, Result, anyhow, bail};
 use axum::{
 	extract::{Query, Request},
 	http::{HeaderMap, StatusCode},
 	middleware::Next,
 	response::Response,
 };
-use bcrypt::BcryptError;
 use entity::users::Model as User;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use sea_orm::{DatabaseConnection, DbErr};
@@ -32,12 +31,24 @@ pub struct AuthResponse {
 	pub token: String,
 }
 
-pub fn hash_password(password: &str) -> Result<String, BcryptError> {
+/// Maximum password length in bytes to avoid silent truncation by bcrypt.
+/// Bcrypt internally truncates at 72 bytes, so we reject longer passwords upfront.
+const MAX_PASSWORD_LENGTH: usize = 72;
+
+pub fn hash_password(password: &str) -> Result<String> {
+	if password.len() > MAX_PASSWORD_LENGTH {
+		bail!(
+			"Password exceeds maximum length of {} bytes (got {})",
+			MAX_PASSWORD_LENGTH,
+			password.len()
+		);
+	}
 	bcrypt::hash(password, bcrypt::DEFAULT_COST)
+		.map_err(|e| anyhow!("Failed to hash password: {e}"))
 }
 
-fn verify_password(password: &str, hash: &str) -> Result<bool, BcryptError> {
-	bcrypt::verify(password, hash)
+fn verify_password(password: &str, hash: &str) -> Result<bool> {
+	bcrypt::verify(password, hash).map_err(|e| anyhow!("Failed to verify password: {e}"))
 }
 
 pub fn generate_token(username: &str) -> Result<String> {
@@ -94,7 +105,7 @@ pub async fn authenticate_user(
 		Ok(user) => match verify_password(&credentials.password, &user.password) {
 			Ok(true) => Ok(Some(user)),
 			Ok(false) => Ok(None),
-			Err(err) => Err(Error::from(err)),
+			Err(err) => Err(err),
 		},
 		Err(DbErr::RecordNotFound(_)) => Ok(None),
 		Err(err) => Err(Error::from(err)),
