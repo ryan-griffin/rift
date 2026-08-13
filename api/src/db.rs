@@ -4,9 +4,25 @@ use crate::entity::{
 };
 use chrono::Utc;
 use sea_orm::{
-	ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
+	ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, RuntimeErr,
+	Set, sqlx,
 };
 use std::collections::VecDeque;
+
+pub const USERNAME_TAKEN: &str = "Username already taken";
+
+fn is_unique_violation(err: &DbErr) -> bool {
+	match err {
+		// SQLSTATE codes: 23505 = Postgres unique_violation, 2067 = SQLite constraint unique
+		DbErr::Exec(RuntimeErr::SqlxError(sqlx::Error::Database(db_err)))
+		| DbErr::Query(RuntimeErr::SqlxError(sqlx::Error::Database(db_err))) => {
+			db_err
+				.code()
+				.is_some_and(|code| code == "23505" || code == "2067")
+		}
+		_ => false,
+	}
+}
 
 pub async fn get_users(db: &DatabaseConnection) -> Result<Vec<User>, DbErr> {
 	users::Entity::find().all(db).await
@@ -30,7 +46,7 @@ pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, Db
 		.await?;
 
 	if existing.is_some() {
-		return Err(DbErr::Custom("Username already taken".to_string()));
+		return Err(DbErr::Custom(USERNAME_TAKEN.to_string()));
 	}
 
 	users::ActiveModel {
@@ -40,10 +56,13 @@ pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, Db
 	}
 	.insert(db)
 	.await
-	.map_err(|e| match &e {
+	.map_err(|e| {
 		// Catch race-condition duplicates that bypassed the pre-check (e.g. concurrent signups)
-		DbErr::Exec(_) => DbErr::Custom("Username already taken".to_string()),
-		_ => e,
+		if is_unique_violation(&e) {
+			DbErr::Custom(USERNAME_TAKEN.to_string())
+		} else {
+			e
+		}
 	})
 }
 

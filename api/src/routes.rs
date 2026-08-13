@@ -1,6 +1,9 @@
 use crate::AppState;
-use crate::auth::{AuthResponse, Credentials, authenticate_user, generate_token, hash_password};
+use crate::auth::{
+	AuthResponse, Credentials, PasswordError, authenticate_user, generate_token, hash_password,
+};
 use crate::db;
+use crate::db::USERNAME_TAKEN;
 use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
@@ -30,7 +33,9 @@ pub async fn get_user(
 	match db::get_user(&app_state.conn, &path_username).await {
 		Ok(user) => Ok(Json(user)),
 		Err(err) => {
-			eprintln!("{err}");
+			if !matches!(err, DbErr::RecordNotFound(_)) {
+				eprintln!("{err}");
+			}
 			Err(match &err {
 				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
 				_ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -47,7 +52,9 @@ pub async fn get_directory(
 	match db::get_directory(&app_state.conn, id).await {
 		Ok(directory) => Ok(Json(directory)),
 		Err(err) => {
-			eprintln!("{err}");
+			if !matches!(err, DbErr::RecordNotFound(_)) {
+				eprintln!("{err}");
+			}
 			Err(match &err {
 				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
 				_ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -90,7 +97,9 @@ pub async fn get_message(
 	match db::get_message(&app_state.conn, id).await {
 		Ok(message) => Ok(Json(message)),
 		Err(err) => {
-			eprintln!("{err}");
+			if !matches!(err, DbErr::RecordNotFound(_)) {
+				eprintln!("{err}");
+			}
 			Err(match &err {
 				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
 				_ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -108,7 +117,9 @@ pub async fn create_message(
 	let created_message = db::create_message(&app_state.conn, username, message)
 		.await
 		.map_err(|e| {
-			eprintln!("{e}");
+			if !matches!(e, DbErr::RecordNotFound(_)) {
+				eprintln!("{e}");
+			}
 			match &e {
 				DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
 				_ => StatusCode::INTERNAL_SERVER_ERROR,
@@ -133,23 +144,19 @@ pub async fn signup(
 ) -> Result<Json<AuthResponse>> {
 	match hash_password(&user.password) {
 		Ok(hash) => user.password = hash,
+		Err(PasswordError::TooLong { .. }) => return Err(StatusCode::BAD_REQUEST.into()),
 		Err(err) => {
 			eprintln!("{err}");
-			return Err(if err.to_string().contains("exceeds maximum length") {
-				StatusCode::BAD_REQUEST
-			} else {
-				StatusCode::INTERNAL_SERVER_ERROR
-			}
-			.into());
+			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
 		}
 	};
 
 	let created_user = db::create_user(&app_state.conn, user).await.map_err(|e| {
-		eprintln!("{e}");
-		match &e {
-			DbErr::Custom(msg) if msg == "Username already taken" => StatusCode::CONFLICT,
-			_ => StatusCode::INTERNAL_SERVER_ERROR,
+		if matches!(&e, DbErr::Custom(msg) if msg == USERNAME_TAKEN) {
+			return StatusCode::CONFLICT;
 		}
+		eprintln!("{e}");
+		StatusCode::INTERNAL_SERVER_ERROR
 	})?;
 
 	app_state

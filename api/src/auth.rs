@@ -1,12 +1,13 @@
 use crate::db;
 use crate::entity;
-use anyhow::{Context, Error, Result, anyhow, bail};
+use anyhow::{Context, Error, Result, anyhow};
 use axum::{
 	extract::{Query, Request},
 	http::{HeaderMap, StatusCode},
 	middleware::Next,
 	response::Response,
 };
+use bcrypt::BcryptError;
 use entity::users::Model as User;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
 use sea_orm::{DatabaseConnection, DbErr};
@@ -35,16 +36,40 @@ pub struct AuthResponse {
 /// Bcrypt internally truncates at 72 bytes, so we reject longer passwords upfront.
 const MAX_PASSWORD_LENGTH: usize = 72;
 
-pub fn hash_password(password: &str) -> Result<String> {
-	if password.len() > MAX_PASSWORD_LENGTH {
-		bail!(
-			"Password exceeds maximum length of {} bytes (got {})",
-			MAX_PASSWORD_LENGTH,
-			password.len()
-		);
+#[derive(Debug)]
+pub enum PasswordError {
+	TooLong { length: usize },
+	Hash(BcryptError),
+}
+
+impl std::fmt::Display for PasswordError {
+	fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+		match self {
+			PasswordError::TooLong { length } => write!(
+				f,
+				"Password exceeds maximum length of {MAX_PASSWORD_LENGTH} bytes (got {length})"
+			),
+			PasswordError::Hash(err) => write!(f, "Failed to hash password: {err}"),
+		}
 	}
-	bcrypt::hash(password, bcrypt::DEFAULT_COST)
-		.map_err(|e| anyhow!("Failed to hash password: {e}"))
+}
+
+impl std::error::Error for PasswordError {
+	fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+		match self {
+			PasswordError::Hash(err) => Some(err),
+			_ => None,
+		}
+	}
+}
+
+pub fn hash_password(password: &str) -> Result<String, PasswordError> {
+	if password.len() > MAX_PASSWORD_LENGTH {
+		return Err(PasswordError::TooLong {
+			length: password.len(),
+		});
+	}
+	bcrypt::hash(password, bcrypt::DEFAULT_COST).map_err(PasswordError::Hash)
 }
 
 fn verify_password(password: &str, hash: &str) -> Result<bool> {
