@@ -3,6 +3,11 @@ name: Build Containers
 on:
     push:
         branches: [main]
+        paths:
+            - "api/**"
+            - "app/**"
+            - ".github/workflows/build.yml"
+    workflow_dispatch:
 
 env:
     REGISTRY: ghcr.io
@@ -11,10 +16,15 @@ permissions:
     contents: read
     packages: write
 
+concurrency:
+    group: build-containers-${{ github.ref }}
+    cancel-in-progress: false
+
 jobs:
     build-api:
         name: Build API
         runs-on: ubuntu-latest
+        timeout-minutes: 120
         steps:
             - uses: actions/checkout@v7
 
@@ -55,6 +65,7 @@ jobs:
     build-app:
         name: Build App
         runs-on: ubuntu-latest
+        timeout-minutes: 120
         steps:
             - uses: actions/checkout@v7
 
