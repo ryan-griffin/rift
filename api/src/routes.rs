@@ -12,6 +12,7 @@ use axum::{
 	response::{Response, Result},
 };
 
+#[allow(clippy::result_large_err)]
 pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>> {
 	match db::get_users(&app_state.conn).await {
 		Ok(users) => Ok(Json(users)),
@@ -22,6 +23,7 @@ pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<Use
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn get_user(
 	State(app_state): State<AppState>,
 	Path(path_username): Path<String>,
@@ -35,6 +37,7 @@ pub async fn get_user(
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn get_directory(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
@@ -48,6 +51,7 @@ pub async fn get_directory(
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn create_directory(
 	State(app_state): State<AppState>,
 	Json(directory): Json<Directory>,
@@ -61,6 +65,7 @@ pub async fn create_directory(
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn get_message_thread(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
@@ -74,6 +79,7 @@ pub async fn get_message_thread(
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn get_message(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
@@ -87,6 +93,7 @@ pub async fn get_message(
 	}
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn create_message(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
@@ -111,6 +118,7 @@ pub async fn create_message(
 	Ok(Json(created_message))
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn signup(
 	State(app_state): State<AppState>,
 	Json(mut user): Json<User>,
@@ -148,6 +156,7 @@ pub async fn signup(
 	}))
 }
 
+#[allow(clippy::result_large_err)]
 pub async fn login(
 	State(app_state): State<AppState>,
 	Json(credentials): Json<Credentials>,
