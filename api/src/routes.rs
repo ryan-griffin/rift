@@ -11,15 +11,34 @@ use axum::{
 	http::StatusCode,
 	response::{Response, Result},
 };
+use sea_orm::{DbErr, RuntimeErr, SqlxError};
+
+fn db_error_status(err: DbErr) -> StatusCode {
+	let status = match &err {
+		DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
+		DbErr::Custom(_) => StatusCode::BAD_REQUEST,
+		DbErr::Exec(RuntimeErr::SqlxError(SqlxError::Database(e)))
+		| DbErr::Query(RuntimeErr::SqlxError(SqlxError::Database(e))) => match e.code().as_deref() {
+			// Postgres SQLSTATEs: 23505 unique_violation, 23503 foreign_key_violation, 23514 check_violation.
+			Some("23505") => StatusCode::CONFLICT,
+			Some("23503" | "23514") => StatusCode::BAD_REQUEST,
+			_ => StatusCode::INTERNAL_SERVER_ERROR,
+		},
+		_ => StatusCode::INTERNAL_SERVER_ERROR,
+	};
+
+	if status == StatusCode::INTERNAL_SERVER_ERROR {
+		eprintln!("{err}");
+	}
+
+	status
+}
 
 #[allow(clippy::result_large_err)]
 pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>> {
 	match db::get_users(&app_state.conn).await {
 		Ok(users) => Ok(Json(users)),
-		Err(err) => {
-			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-		}
+		Err(err) => Err(db_error_status(err).into()),
 	}
 }
 
@@ -30,10 +49,7 @@ pub async fn get_user(
 ) -> Result<Json<User>> {
 	match db::get_user(&app_state.conn, &path_username).await {
 		Ok(user) => Ok(Json(user)),
-		Err(err) => {
-			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-		}
+		Err(err) => Err(db_error_status(err).into()),
 	}
 }
 
@@ -44,10 +60,7 @@ pub async fn get_directory(
 ) -> Result<Json<Vec<Directory>>> {
 	match db::get_directory(&app_state.conn, id).await {
 		Ok(directory) => Ok(Json(directory)),
-		Err(err) => {
-			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-		}
+		Err(err) => Err(db_error_status(err).into()),
 	}
 }
 
@@ -58,10 +71,7 @@ pub async fn create_directory(
 ) -> Result<Json<Directory>> {
 	let created_directory = db::create_directory(&app_state.conn, directory)
 		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.map_err(db_error_status)?;
 
 	app_state
 		.ws_state
@@ -82,10 +92,7 @@ pub async fn get_message_thread(
 ) -> Result<Json<Vec<Message>>> {
 	match db::get_message_thread(&app_state.conn, id).await {
 		Ok(thread) => Ok(Json(thread)),
-		Err(err) => {
-			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-		}
+		Err(err) => Err(db_error_status(err).into()),
 	}
 }
 
@@ -96,10 +103,7 @@ pub async fn get_message(
 ) -> Result<Json<Message>> {
 	match db::get_message(&app_state.conn, id).await {
 		Ok(message) => Ok(Json(message)),
-		Err(err) => {
-			eprintln!("{err}");
-			Err(StatusCode::INTERNAL_SERVER_ERROR.into())
-		}
+		Err(err) => Err(db_error_status(err).into()),
 	}
 }
 
@@ -111,10 +115,7 @@ pub async fn create_message(
 ) -> Result<Json<Message>> {
 	let created_message = db::create_message(&app_state.conn, username, message)
 		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.map_err(db_error_status)?;
 
 	app_state
 		.ws_state
@@ -141,10 +142,9 @@ pub async fn signup(
 		}
 	};
 
-	let created_user = db::create_user(&app_state.conn, user).await.map_err(|e| {
-		eprintln!("{e}");
-		StatusCode::INTERNAL_SERVER_ERROR
-	})?;
+	let created_user = db::create_user(&app_state.conn, user)
+		.await
+		.map_err(db_error_status)?;
 
 	app_state
 		.ws_state
