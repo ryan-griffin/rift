@@ -114,7 +114,10 @@ impl WsState {
 		}
 
 		let env = WsEnvelope::new(module, r#type, &payload)?;
-		self.tx.send(env)?;
+
+		// Fails only when no clients are connected.
+		let _ = self.tx.send(env);
+
 		Ok(())
 	}
 }
