@@ -32,6 +32,25 @@ pub struct AuthResponse {
 	pub token: String,
 }
 
+/// Why a password failed validation; transport mapping happens in callers.
+#[derive(Debug)]
+pub enum PasswordError {
+	Empty,
+	TooLong,
+}
+
+/// bcrypt ignores input past 72 bytes and empty passwords are never valid,
+/// so both are rejected here rather than silently accepted.
+pub fn validate_password(password: &str) -> Result<(), PasswordError> {
+	if password.is_empty() {
+		return Err(PasswordError::Empty);
+	}
+	if password.len() > 72 {
+		return Err(PasswordError::TooLong);
+	}
+	Ok(())
+}
+
 pub fn hash_password(password: &str) -> Result<String, BcryptError> {
 	bcrypt::hash(password, bcrypt::DEFAULT_COST)
 }
