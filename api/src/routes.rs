@@ -22,9 +22,10 @@ fn db_error_status(err: DbErr) -> StatusCode {
 		DbErr::Custom(_) => StatusCode::BAD_REQUEST,
 		DbErr::Exec(RuntimeErr::SqlxError(SqlxError::Database(e)))
 		| DbErr::Query(RuntimeErr::SqlxError(SqlxError::Database(e))) => match e.code().as_deref() {
-			// Postgres SQLSTATEs: 23505 unique_violation, 23503 foreign_key_violation, 23514 check_violation.
+			// Postgres SQLSTATEs: 23505 unique_violation, 23503 foreign_key_violation,
+			// 23514 check_violation, 22001 string_data_right_truncation.
 			Some("23505") => StatusCode::CONFLICT,
-			Some("23503" | "23514") => StatusCode::BAD_REQUEST,
+			Some("23503" | "23514" | "22001") => StatusCode::BAD_REQUEST,
 			_ => StatusCode::INTERNAL_SERVER_ERROR,
 		},
 		_ => StatusCode::INTERNAL_SERVER_ERROR,
