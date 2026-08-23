@@ -12,9 +12,10 @@ impl MigrationTrait for Migration {
 					.table(Directory::Table)
 					.if_not_exists()
 					.col(pk_auto(Directory::Id))
-					.col(string(Directory::Name))
+					.col(string_len(Directory::Name, 64))
 					.col(string(Directory::Type))
 					.col(integer_null(Directory::ParentId))
+					.check(Expr::cust(r#"char_length("name") > 0"#))
 					.foreign_key(
 						ForeignKey::create()
 							.from(Directory::Table, Directory::ParentId)
