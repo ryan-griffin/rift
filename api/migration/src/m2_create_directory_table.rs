@@ -20,7 +20,7 @@ impl MigrationTrait for Migration {
 						ForeignKey::create()
 							.from(Directory::Table, Directory::ParentId)
 							.to(Directory::Table, Directory::Id)
-							.on_delete(ForeignKeyAction::SetNull)
+							.on_delete(ForeignKeyAction::Cascade)
 							.on_update(ForeignKeyAction::Cascade),
 					)
 					.check(Expr::col(Directory::Type).is_in(vec!["folder", "thread"]))
