@@ -59,6 +59,19 @@ impl MigrationTrait for Migration {
 					)
 					.to_owned(),
 			)
+			.await?;
+
+		// Hot read path: thread views filter by directory_id.
+		// A plain index cannot be declared inline in CREATE TABLE.
+		manager
+			.create_index(
+				Index::create()
+					.name("idx_messages_directory_id_created_at")
+					.table(Messages::Table)
+					.col(Messages::DirectoryId)
+					.col(Messages::CreatedAt)
+					.to_owned(),
+			)
 			.await
 	}
 
