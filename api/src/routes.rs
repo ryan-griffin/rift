@@ -1,5 +1,8 @@
 use crate::AppState;
-use crate::auth::{AuthResponse, Credentials, authenticate_user, generate_token, hash_password};
+use crate::auth::{
+	AuthResponse, Credentials, PasswordError, authenticate_user, generate_token, hash_password,
+	validate_password,
+};
 use crate::db;
 use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
@@ -164,6 +167,11 @@ pub async fn signup(
 	State(app_state): State<AppState>,
 	Json(mut user): Json<User>,
 ) -> Result<Json<AuthResponse>> {
+	validate_password(&user.password).map_err(|e| match e {
+		PasswordError::Empty => (StatusCode::BAD_REQUEST, "password must not be empty"),
+		PasswordError::TooLong => (StatusCode::BAD_REQUEST, "password must be at most 72 bytes"),
+	})?;
+
 	match hash_password(&user.password) {
 		Ok(hash) => user.password = hash,
 		Err(err) => {
