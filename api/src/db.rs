@@ -23,9 +23,10 @@ pub async fn get_user(db: &DatabaseConnection, username: &str) -> Result<User, D
 }
 
 pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, DbErr> {
+	// Password should not be trimmed.
 	users::ActiveModel {
-		username: Set(user.username),
-		name: Set(user.name),
+		username: Set(user.username.trim().to_string()),
+		name: Set(user.name.trim().to_string()),
 		password: Set(user.password),
 	}
 	.insert(db)
@@ -85,7 +86,7 @@ pub async fn create_directory(
 	}
 
 	directory::ActiveModel {
-		name: Set(directory.name),
+		name: Set(directory.name.trim().to_string()),
 		r#type: Set(directory.r#type),
 		parent_id: Set(directory.parent_id),
 		..Default::default()
@@ -141,6 +142,7 @@ pub async fn create_message(
 
 			messages::ActiveModel {
 				author_username: Set(author_username),
+				// Content is stored verbatim; whitespace can be deliberate.
 				content: Set(message.content),
 				directory_id: Set(message.directory_id),
 				parent_id: Set(message.parent_id),
