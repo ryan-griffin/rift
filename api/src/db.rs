@@ -30,8 +30,35 @@ pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, Db
 		username: Set(user.username.trim().to_string()),
 		name: Set(user.name.trim().to_string()),
 		password: Set(user.password),
+		..Default::default()
 	}
 	.insert(db)
+	.await
+}
+
+/// Tombstone a user: the row stays so their messages keep resolving to an
+/// author, the password is wiped so login can never succeed.
+/// Reversible as identity, not as auth — un-deleting requires a password reset.
+#[allow(dead_code)]
+pub async fn delete_user(db: &DatabaseConnection, username: &str) -> Result<User, DbErr> {
+	let user = users::Entity::find_by_id(username.trim())
+		.one(db)
+		.await?
+		.ok_or(DbErr::RecordNotFound(format!(
+			"User with username {username} not found"
+		)))?;
+
+	if user.deleted_at.is_some() {
+		return Ok(user);
+	}
+
+	users::ActiveModel {
+		username: Set(user.username),
+		password: Set(String::new()),
+		deleted_at: Set(Some(Utc::now().into())),
+		..Default::default()
+	}
+	.update(db)
 	.await
 }
 

@@ -110,11 +110,19 @@ pub async fn authenticate_user(
 	credentials: &Credentials,
 ) -> Result<Option<User>> {
 	match db::get_user(db, &credentials.username).await {
-		Ok(user) => match verify_password(&credentials.password, &user.password) {
-			Ok(true) => Ok(Some(user)),
-			Ok(false) => Ok(None),
-			Err(err) => Err(Error::from(err)),
-		},
+		Ok(user) => {
+			// Deleted accounts authenticate as failures, same as a wrong
+			// password: the wiped hash can never match anyway, but this
+			// makes the policy explicit rather than incidental.
+			if user.deleted_at.is_some() {
+				return Ok(None);
+			}
+			match verify_password(&credentials.password, &user.password) {
+				Ok(true) => Ok(Some(user)),
+				Ok(false) => Ok(None),
+				Err(err) => Err(Error::from(err)),
+			}
+		}
 		Err(DbErr::RecordNotFound(_)) => Ok(None),
 		Err(err) => Err(Error::from(err)),
 	}

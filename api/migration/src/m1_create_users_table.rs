@@ -14,6 +14,7 @@ impl MigrationTrait for Migration {
 					.col(string_len(Users::Username, 32).primary_key())
 					.col(string_len(Users::Name, 64))
 					.col(string(Users::Password))
+					.col(timestamp_with_time_zone_null(Users::DeletedAt))
 					.check(Expr::cust(r#"char_length("name") > 0"#))
 					.check(Expr::cust(r#""username" ~ '^[a-z0-9_]+$'"#))
 					.to_owned(),
@@ -34,4 +35,5 @@ pub enum Users {
 	Username,
 	Name,
 	Password,
+	DeletedAt,
 }

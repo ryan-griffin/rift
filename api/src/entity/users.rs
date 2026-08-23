@@ -9,6 +9,8 @@ pub struct Model {
 	pub name: String,
 	#[serde(skip_serializing)]
 	pub password: String,
+	#[serde(skip_deserializing)]
+	pub deleted_at: Option<DateTimeWithTimeZone>,
 }
 
 #[derive(Copy, Clone, Debug, EnumIter, DeriveRelation)]
