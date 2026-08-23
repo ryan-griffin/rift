@@ -13,6 +13,8 @@ pub async fn get_users(db: &DatabaseConnection) -> Result<Vec<User>, DbErr> {
 }
 
 pub async fn get_user(db: &DatabaseConnection, username: &str) -> Result<User, DbErr> {
+	// Signup trims username, so we must do so here.
+	let username = username.trim();
 	users::Entity::find()
 		.filter(users::Column::Username.eq(username))
 		.one(db)
