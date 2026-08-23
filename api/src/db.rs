@@ -100,12 +100,28 @@ pub async fn create_message(
 	message: Message,
 ) -> Result<Message, DbErr> {
 	// The target must exist and be a thread; same-thread replies are
-	// enforced by fk_messages_parent_same_thread in m3.
+	// enforced by fk_messages_parent_same_thread in m3. Replying to a
+	// tombstoned parent is rejected here — the FK can't see deleted_at.
 	match directory::Entity::find_by_id(message.directory_id)
 		.one(db)
 		.await?
 	{
 		Some(directory) if directory.r#type == "thread" => {
+			if let Some(parent_id) = message.parent_id {
+				let parent = messages::Entity::find_by_id(parent_id)
+					.one(db)
+					.await?
+					.ok_or(DbErr::RecordNotFound(format!(
+						"Parent message with id {parent_id} not found"
+					)))?;
+
+				if parent.deleted_at.is_some() {
+					return Err(DbErr::Custom(format!(
+						"Parent message {parent_id} is deleted"
+					)));
+				}
+			}
+
 			messages::ActiveModel {
 				author_username: Set(author_username),
 				content: Set(message.content),
@@ -126,4 +142,28 @@ pub async fn create_message(
 			message.directory_id
 		))),
 	}
+}
+
+/// Tombstone a message: content is wiped, the row and reply links stay.
+/// Idempotent. Ownership gating happens in callers.
+pub async fn delete_message(db: &DatabaseConnection, id: i32) -> Result<Message, DbErr> {
+	let message = messages::Entity::find_by_id(id)
+		.one(db)
+		.await?
+		.ok_or(DbErr::RecordNotFound(format!(
+			"Message with id {id} not found"
+		)))?;
+
+	if message.deleted_at.is_some() {
+		return Ok(message);
+	}
+
+	messages::ActiveModel {
+		id: Set(message.id),
+		content: Set(String::new()),
+		deleted_at: Set(Some(Utc::now().into())),
+		..Default::default()
+	}
+	.update(db)
+	.await
 }

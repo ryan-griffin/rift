@@ -63,7 +63,7 @@ async fn main() -> Result<()> {
 		.route("/api/directory/{id}", get(get_directory))
 		.route("/api/directory", post(create_directory))
 		.route("/api/thread/{id}", get(get_message_thread))
-		.route("/api/message/{id}", get(get_message))
+		.route("/api/message/{id}", get(get_message).delete(delete_message))
 		.route("/api/message", post(create_message))
 		.route("/api/ws", get(ws_handler))
 		.route_layer(middleware::from_fn(auth_middleware))
