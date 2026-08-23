@@ -67,6 +67,23 @@ pub async fn create_directory(
 	db: &DatabaseConnection,
 	directory: Directory,
 ) -> Result<Directory, DbErr> {
+	// FK ensures a parent exists but can't inspect its type. Folders must be
+	// matched explicitly so types added later default to leaf.
+	if let Some(parent_id) = directory.parent_id {
+		let parent = directory::Entity::find_by_id(parent_id)
+			.one(db)
+			.await?
+			.ok_or(DbErr::RecordNotFound(format!(
+				"Directory with id {parent_id} not found"
+			)))?;
+
+		if parent.r#type != "folder" {
+			return Err(DbErr::Custom(format!(
+				"Directory {parent_id} is not a folder and cannot have children"
+			)));
+		}
+	}
+
 	directory::ActiveModel {
 		name: Set(directory.name),
 		r#type: Set(directory.r#type),
