@@ -130,6 +130,36 @@ pub async fn create_message(
 }
 
 #[allow(clippy::result_large_err)]
+pub async fn delete_message(
+	State(app_state): State<AppState>,
+	Extension(username): Extension<String>,
+	Path(id): Path<i32>,
+) -> Result<Json<Message>> {
+	let message = db::get_message(&app_state.conn, id)
+		.await
+		.map_err(db_error_status)?;
+
+	if message.author_username != username {
+		return Err(StatusCode::FORBIDDEN.into());
+	}
+
+	let deleted_message = db::delete_message(&app_state.conn, id)
+		.await
+		.map_err(db_error_status)?;
+
+	app_state
+		.ws_state
+		.broadcast("messages", "message_deleted", &deleted_message)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	Ok(Json(deleted_message))
+}
+
+#[allow(clippy::result_large_err)]
 pub async fn signup(
 	State(app_state): State<AppState>,
 	Json(mut user): Json<User>,
