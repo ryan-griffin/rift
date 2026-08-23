@@ -13,6 +13,10 @@ pub struct Model {
 	pub directory_id: i32,
 	#[serde(skip_deserializing)]
 	pub created_at: DateTimeWithTimeZone,
+	#[serde(skip_deserializing)]
+	pub edited_at: Option<DateTimeWithTimeZone>,
+	#[serde(skip_deserializing)]
+	pub deleted_at: Option<DateTimeWithTimeZone>,
 	pub parent_id: Option<i32>,
 }
 
@@ -28,10 +32,9 @@ pub enum Relation {
 	Directory,
 	#[sea_orm(
 		belongs_to = "Entity",
-		from = "Column::ParentId",
-		to = "Column::Id",
-		on_update = "Cascade",
-		on_delete = "SetNull"
+		from = "(Column::ParentId, Column::DirectoryId)",
+		to = "(Column::Id, Column::DirectoryId)",
+		on_update = "Cascade"
 	)]
 	SelfRef,
 	#[sea_orm(

@@ -11,9 +11,11 @@ impl MigrationTrait for Migration {
 				Table::create()
 					.table(Users::Table)
 					.if_not_exists()
-					.col(string(Users::Username).primary_key())
-					.col(string(Users::Name))
+					.col(string_len(Users::Username, 32).primary_key())
+					.col(string_len(Users::Name, 64))
 					.col(string(Users::Password))
+					.check(Expr::cust(r#"char_length("name") > 0"#))
+					.check(Expr::cust(r#""username" ~ '^[a-z0-9_]+$'"#))
 					.to_owned(),
 			)
 			.await
