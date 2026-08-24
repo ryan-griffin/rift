@@ -60,7 +60,10 @@ async fn main() -> Result<()> {
 	let app = Router::new()
 		.route("/api/users", get(get_users))
 		.route("/api/users/{username}", get(get_user).delete(delete_user))
-		.route("/api/directory/{id}", get(get_directory))
+		.route(
+			"/api/directory/{id}",
+			get(get_directory).delete(delete_directory),
+		)
 		.route("/api/directory", post(create_directory))
 		.route("/api/thread/{id}", get(get_message_thread))
 		.route("/api/message/{id}", get(get_message).delete(delete_message))

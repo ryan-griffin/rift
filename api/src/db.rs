@@ -123,6 +123,22 @@ pub async fn create_directory(
 	.await
 }
 
+/// Hard delete; the cascading parent and messages FKs take the whole
+/// subtree and its messages with it.
+pub async fn delete_directory(db: &DatabaseConnection, id: i32) -> Result<Directory, DbErr> {
+	let directory =
+		directory::Entity::find_by_id(id)
+			.one(db)
+			.await?
+			.ok_or(DbErr::RecordNotFound(format!(
+				"Directory with id {id} not found"
+			)))?;
+
+	directory::Entity::delete_by_id(id).exec(db).await?;
+
+	Ok(directory)
+}
+
 pub async fn get_message_thread(db: &DatabaseConnection, id: i32) -> Result<Vec<Message>, DbErr> {
 	messages::Entity::find()
 		.filter(messages::Column::DirectoryId.eq(id))
