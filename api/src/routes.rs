@@ -58,6 +58,33 @@ pub async fn get_user(
 }
 
 #[allow(clippy::result_large_err)]
+pub async fn delete_user(
+	State(app_state): State<AppState>,
+	Extension(username): Extension<String>,
+	Path(path_username): Path<String>,
+) -> Result<Json<User>> {
+	// Users may only delete themselves.
+	if path_username.trim() != username {
+		return Err(StatusCode::FORBIDDEN.into());
+	}
+
+	let deleted_user = db::delete_user(&app_state.conn, &path_username)
+		.await
+		.map_err(db_error_status)?;
+
+	app_state
+		.ws_state
+		.broadcast("users", "user_deleted", &deleted_user)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	Ok(Json(deleted_user))
+}
+
+#[allow(clippy::result_large_err)]
 pub async fn get_directory(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,

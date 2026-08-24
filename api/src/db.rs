@@ -39,7 +39,6 @@ pub async fn create_user(db: &DatabaseConnection, user: User) -> Result<User, Db
 /// Tombstone a user: the row stays so their messages keep resolving to an
 /// author, the password is wiped so login can never succeed.
 /// Reversible as identity, not as auth — un-deleting requires a password reset.
-#[allow(dead_code)]
 pub async fn delete_user(db: &DatabaseConnection, username: &str) -> Result<User, DbErr> {
 	let user = users::Entity::find_by_id(username.trim())
 		.one(db)
