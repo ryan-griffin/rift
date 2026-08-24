@@ -117,6 +117,27 @@ pub async fn create_directory(
 }
 
 #[allow(clippy::result_large_err)]
+pub async fn delete_directory(
+	State(app_state): State<AppState>,
+	Path(id): Path<i32>,
+) -> Result<Json<Directory>> {
+	let deleted_directory = db::delete_directory(&app_state.conn, id)
+		.await
+		.map_err(db_error_status)?;
+
+	app_state
+		.ws_state
+		.broadcast("directory", "directory_deleted", &deleted_directory)
+		.await
+		.map_err(|e| {
+			eprintln!("{e}");
+			StatusCode::INTERNAL_SERVER_ERROR
+		})?;
+
+	Ok(Json(deleted_directory))
+}
+
+#[allow(clippy::result_large_err)]
 pub async fn get_message_thread(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
