@@ -47,6 +47,20 @@ const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
 
 		const res = await fetch(`http://${address}/api${url}`, options);
 		if (res.status === 401) logout();
+
+		// Our API answers 4xx with { error } bodies; rethrow so queries
+		// land in error state instead of resolving with wrongly-shaped
+		// data. Body-less responses (401/500) parse to null and fall
+		// back to the status text / code.
+		if (!res.ok) {
+			const body = await res.json().catch(() => null);
+			throw new Error(
+				body?.error ||
+					res.statusText ||
+					`Request failed (${res.status})`,
+			);
+		}
+
 		return await res.json();
 	};
 
