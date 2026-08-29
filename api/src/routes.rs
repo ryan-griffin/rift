@@ -13,10 +13,7 @@ use axum::{
 	Extension, Json,
 	body::{Body, to_bytes},
 	extract::{Path, Request, State, WebSocketUpgrade},
-	http::{
-		HeaderMap, StatusCode,
-		header::{CONTENT_LENGTH, CONTENT_TYPE},
-	},
+	http::{HeaderMap, StatusCode, header::CONTENT_TYPE},
 	middleware::Next,
 	response::{IntoResponse, Response},
 };
@@ -70,30 +67,21 @@ fn is_json_content_type(headers: &HeaderMap) -> bool {
 /// request bodies) answer with plain-text 4xx bodies. Rewrite those into
 /// the same JSON envelope `ApiError` produces so REST errors with bodies
 /// share one shape. Empty-bodied 4xx responses are passed through
-/// untouched, headers included, and so are plain-text bodies too large
-/// for the buffer cap.
+/// untouched, headers included. Rejection bodies over the buffer cap
+/// receive a bounded generic error instead.
 pub async fn normalize_rejections(request: Request, next: Next) -> Response {
 	let (parts, body) = next.run(request).await.into_parts();
 
-	// Pass responses whose declared Content-Length exceeds the cap
-	// through untouched: buffering would truncate them into a
-	// content-length/empty-body mismatch. (Undeclared oversized bodies
-	// still truncate lossily, but with no content-length to contradict.)
-	let content_length = parts
-		.headers
-		.get(CONTENT_LENGTH)
-		.and_then(|value| value.to_str().ok())
-		.and_then(|value| value.parse::<u64>().ok());
-	if !parts.status.is_client_error()
-		|| is_json_content_type(&parts.headers)
-		|| content_length.is_some_and(|len| len > REJECTION_BODY_LIMIT as u64)
-	{
+	if !parts.status.is_client_error() || is_json_content_type(&parts.headers) {
 		return Response::from_parts(parts, body);
 	}
 
-	let bytes = to_bytes(body, REJECTION_BODY_LIMIT)
-		.await
-		.unwrap_or_default();
+	let bytes = match to_bytes(body, REJECTION_BODY_LIMIT).await {
+		Ok(bytes) => bytes,
+		Err(_) => {
+			return (parts.status, Json(json!({ "error": "Request rejected" }))).into_response();
+		}
+	};
 	let message = String::from_utf8_lossy(&bytes).trim().to_owned();
 
 	if message.is_empty() {
