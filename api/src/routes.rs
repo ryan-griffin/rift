@@ -1,13 +1,10 @@
 use crate::AppState;
-use crate::auth::{
-	AuthResponse, Credentials, PasswordError, authenticate_user, generate_token, hash_password,
-	validate_password,
-};
-use crate::db;
+use crate::auth::{AuthResponse, Credentials, generate_token};
 use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
-use crate::error::ApiError;
+use crate::error::ServiceError;
+use crate::service::{self, CreateDirectoryInput, CreateMessageInput, SignupInput};
 use crate::websocket::handle_socket;
 use axum::{
 	Extension, Json,
@@ -22,11 +19,12 @@ use serde_json::json;
 /// Refuse to buffer more than this much of a rejection body; axum's own
 /// rejection texts are short.
 const REJECTION_BODY_LIMIT: usize = 4096;
+const WS_INPUT_LIMIT: usize = 64 * 1024;
 
-/// REST rendering of the transport-agnostic `ApiError`: client faults map
+/// REST rendering of the transport-agnostic `ServiceError`: client faults map
 /// to 4xx statuses with their message as a JSON body; internal failures
 /// are logged and stay body-less so internals never leak.
-impl IntoResponse for ApiError {
+impl IntoResponse for ServiceError {
 	fn into_response(self) -> Response {
 		let (status, message) = match &self {
 			Self::NotFound(msg) => (StatusCode::NOT_FOUND, Some(msg.clone())),
@@ -65,7 +63,7 @@ fn is_json_content_type(headers: &HeaderMap) -> bool {
 
 /// Axum's built-in extractor rejections (invalid path segments, malformed
 /// request bodies) answer with plain-text 4xx bodies. Rewrite those into
-/// the same JSON envelope `ApiError` produces so REST errors with bodies
+/// the same JSON envelope `ServiceError` produces so REST errors with bodies
 /// share one shape. Empty-bodied 4xx responses are passed through
 /// untouched, headers included. Rejection bodies over the buffer cap
 /// receive a bounded generic error instead.
@@ -94,28 +92,23 @@ pub async fn normalize_rejections(request: Request, next: Next) -> Response {
 	(parts.status, Json(json!({ "error": message }))).into_response()
 }
 
-pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>, ApiError> {
-	Ok(Json(db::get_users(&app_state.conn).await?))
+pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>, ServiceError> {
+	Ok(Json(service::get_users(&app_state.conn).await?))
 }
 
 pub async fn get_user(
 	State(app_state): State<AppState>,
-	Path(path_username): Path<String>,
-) -> Result<Json<User>, ApiError> {
-	Ok(Json(db::get_user(&app_state.conn, &path_username).await?))
+	Path(username): Path<String>,
+) -> Result<Json<User>, ServiceError> {
+	Ok(Json(service::get_user(&app_state.conn, username).await?))
 }
 
 pub async fn delete_user(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
 	Path(path_username): Path<String>,
-) -> Result<Json<User>, ApiError> {
-	// Users may only delete themselves.
-	if path_username.trim() != username {
-		return Err(ApiError::only_own_account());
-	}
-
-	let deleted_user = db::delete_user(&app_state.conn, &path_username).await?;
+) -> Result<Json<User>, ServiceError> {
+	let deleted_user = service::delete_user(&app_state.conn, &username, path_username).await?;
 
 	app_state
 		.ws_state
@@ -128,15 +121,15 @@ pub async fn delete_user(
 pub async fn get_directory(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Vec<Directory>>, ApiError> {
-	Ok(Json(db::get_directory(&app_state.conn, id).await?))
+) -> Result<Json<Vec<Directory>>, ServiceError> {
+	Ok(Json(service::get_directory(&app_state.conn, id).await?))
 }
 
 pub async fn create_directory(
 	State(app_state): State<AppState>,
-	Json(directory): Json<Directory>,
-) -> Result<Json<Directory>, ApiError> {
-	let created_directory = db::create_directory(&app_state.conn, directory).await?;
+	Json(input): Json<CreateDirectoryInput>,
+) -> Result<Json<Directory>, ServiceError> {
+	let created_directory = service::create_directory(&app_state.conn, input).await?;
 
 	app_state
 		.ws_state
@@ -149,8 +142,8 @@ pub async fn create_directory(
 pub async fn delete_directory(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Directory>, ApiError> {
-	let deleted_directory = db::delete_directory(&app_state.conn, id).await?;
+) -> Result<Json<Directory>, ServiceError> {
+	let deleted_directory = service::delete_directory(&app_state.conn, id).await?;
 
 	app_state
 		.ws_state
@@ -163,23 +156,25 @@ pub async fn delete_directory(
 pub async fn get_message_thread(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Vec<Message>>, ApiError> {
-	Ok(Json(db::get_message_thread(&app_state.conn, id).await?))
+) -> Result<Json<Vec<Message>>, ServiceError> {
+	Ok(Json(
+		service::get_message_thread(&app_state.conn, id).await?,
+	))
 }
 
 pub async fn get_message(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Message>, ApiError> {
-	Ok(Json(db::get_message(&app_state.conn, id).await?))
+) -> Result<Json<Message>, ServiceError> {
+	Ok(Json(service::get_message(&app_state.conn, id).await?))
 }
 
 pub async fn create_message(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
-	Json(message): Json<Message>,
-) -> Result<Json<Message>, ApiError> {
-	let created_message = db::create_message(&app_state.conn, username, message).await?;
+	Json(input): Json<CreateMessageInput>,
+) -> Result<Json<Message>, ServiceError> {
+	let created_message = service::create_message(&app_state.conn, username, input).await?;
 
 	app_state
 		.ws_state
@@ -193,14 +188,8 @@ pub async fn delete_message(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
 	Path(id): Path<i32>,
-) -> Result<Json<Message>, ApiError> {
-	let message = db::get_message(&app_state.conn, id).await?;
-
-	if message.author_username != username {
-		return Err(ApiError::only_own_messages());
-	}
-
-	let deleted_message = db::delete_message(&app_state.conn, id).await?;
+) -> Result<Json<Message>, ServiceError> {
+	let deleted_message = service::delete_message(&app_state.conn, &username, id).await?;
 
 	app_state
 		.ws_state
@@ -212,16 +201,9 @@ pub async fn delete_message(
 
 pub async fn signup(
 	State(app_state): State<AppState>,
-	Json(mut user): Json<User>,
-) -> Result<Json<AuthResponse>, ApiError> {
-	validate_password(&user.password).map_err(|e| match e {
-		PasswordError::Empty => ApiError::BadRequest("password must not be empty".into()),
-		PasswordError::TooLong => ApiError::BadRequest("password must be at most 72 bytes".into()),
-	})?;
-
-	user.password = hash_password(&user.password).map_err(|e| ApiError::Internal(e.into()))?;
-
-	let created_user = db::create_user(&app_state.conn, user).await?;
+	Json(input): Json<SignupInput>,
+) -> Result<Json<AuthResponse>, ServiceError> {
+	let created_user = service::create_user(&app_state.conn, input).await?;
 
 	app_state
 		.ws_state
@@ -239,11 +221,8 @@ pub async fn signup(
 pub async fn login(
 	State(app_state): State<AppState>,
 	Json(credentials): Json<Credentials>,
-) -> Result<Json<AuthResponse>, ApiError> {
-	let user = authenticate_user(&app_state.conn, &credentials)
-		.await?
-		.ok_or(ApiError::Unauthorized)?;
-
+) -> Result<Json<AuthResponse>, ServiceError> {
+	let user = service::login(&app_state.conn, credentials).await?;
 	let token = generate_token(&user.username)?;
 
 	Ok(Json(AuthResponse { user, token }))
@@ -254,5 +233,9 @@ pub async fn ws_handler(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
 ) -> Response {
-	ws.on_upgrade(move |socket| handle_socket(socket, app_state.conn, app_state.ws_state, username))
+	ws.max_message_size(WS_INPUT_LIMIT)
+		.max_frame_size(WS_INPUT_LIMIT)
+		.on_upgrade(move |socket| {
+			handle_socket(socket, app_state.conn, app_state.ws_state, username)
+		})
 }

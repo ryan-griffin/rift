@@ -5,7 +5,7 @@ use sea_orm::{DbErr, RuntimeErr, SqlxError};
 /// lives here once. `routes.rs` renders it for REST via `IntoResponse`;
 /// the websocket layer converts it into its own client/internal error.
 #[derive(Debug)]
-pub enum ApiError {
+pub enum ServiceError {
 	NotFound(String),
 	BadRequest(String),
 	Conflict(String),
@@ -14,32 +14,9 @@ pub enum ApiError {
 	Internal(AnyhowError),
 }
 
-impl ApiError {
-	/// 403 — a non-author tried to delete a message.
-	pub fn only_own_messages() -> Self {
-		Self::Forbidden("You can only delete your own messages".into())
-	}
-
-	/// 403 — a user tried to delete someone else's account.
-	pub fn only_own_account() -> Self {
-		Self::Forbidden("You can only delete your own account".into())
-	}
-}
-
-impl From<DbErr> for ApiError {
+impl From<DbErr> for ServiceError {
 	fn from(err: DbErr) -> Self {
 		match &err {
-			// Mostly messages from db.rs, but note sea-orm itself also
-			// constructs RecordNotFound with fixed internal strings (e.g.
-			// "Failed to find updated item" when a row vanishes between
-			// find and update) — harmless to echo, worth knowing on
-			// upgrades.
-			DbErr::RecordNotFound(msg) => Self::NotFound(msg.clone()),
-			// Safe to echo only because db.rs's validation sites are the
-			// sole producers of DbErr::Custom; sea-orm itself never
-			// constructs it (checked against sea-orm 1.1.19). Re-verify on
-			// upgrades before extending this arm.
-			DbErr::Custom(msg) => Self::BadRequest(msg.clone()),
 			DbErr::Exec(RuntimeErr::SqlxError(SqlxError::Database(e)))
 			| DbErr::Query(RuntimeErr::SqlxError(SqlxError::Database(e))) => {
 				match e.code().as_deref() {
@@ -62,7 +39,7 @@ impl From<DbErr> for ApiError {
 	}
 }
 
-impl From<AnyhowError> for ApiError {
+impl From<AnyhowError> for ServiceError {
 	fn from(err: AnyhowError) -> Self {
 		Self::Internal(err)
 	}

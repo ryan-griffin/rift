@@ -1,11 +1,10 @@
 use sea_orm::entity::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize)]
 #[sea_orm(table_name = "directory")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	#[serde(skip_deserializing)]
 	pub id: i32,
 	pub name: String,
 	pub r#type: String,

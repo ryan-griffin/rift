@@ -10,7 +10,7 @@ use axum::{
 use bcrypt::BcryptError;
 use entity::users::Model as User;
 use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use sea_orm::{DatabaseConnection, DbErr};
+use sea_orm::DatabaseConnection;
 use serde::{Deserialize, Serialize};
 use std::{collections::HashMap, env};
 
@@ -21,6 +21,7 @@ struct Claims {
 }
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct Credentials {
 	pub username: String,
 	pub password: String,
@@ -109,8 +110,8 @@ pub async fn authenticate_user(
 	db: &DatabaseConnection,
 	credentials: &Credentials,
 ) -> Result<Option<User>> {
-	match db::get_user(db, &credentials.username).await {
-		Ok(user) => {
+	match db::find_user_by_username(db, &credentials.username).await {
+		Ok(Some(user)) => {
 			// Deleted accounts authenticate as failures, same as a wrong
 			// password: the wiped hash can never match anyway, but this
 			// makes the policy explicit rather than incidental.
@@ -123,7 +124,7 @@ pub async fn authenticate_user(
 				Err(err) => Err(Error::from(err)),
 			}
 		}
-		Err(DbErr::RecordNotFound(_)) => Ok(None),
+		Ok(None) => Ok(None),
 		Err(err) => Err(Error::from(err)),
 	}
 }
