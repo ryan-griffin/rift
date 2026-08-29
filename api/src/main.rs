@@ -1,6 +1,7 @@
 mod auth;
 mod db;
 mod entity;
+mod error;
 mod routes;
 mod websocket;
 use anyhow::{Context, Result};

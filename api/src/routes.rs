@@ -7,245 +7,175 @@ use crate::db;
 use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
+use crate::error::ApiError;
 use crate::websocket::handle_socket;
 use axum::{
 	Extension, Json,
 	extract::{Path, State, WebSocketUpgrade},
 	http::StatusCode,
-	response::{Response, Result},
+	response::{IntoResponse, Response},
 };
-use sea_orm::{DbErr, RuntimeErr, SqlxError};
+use serde_json::json;
 
-fn db_error_status(err: DbErr) -> StatusCode {
-	let status = match &err {
-		DbErr::RecordNotFound(_) => StatusCode::NOT_FOUND,
-		DbErr::Custom(_) => StatusCode::BAD_REQUEST,
-		DbErr::Exec(RuntimeErr::SqlxError(SqlxError::Database(e)))
-		| DbErr::Query(RuntimeErr::SqlxError(SqlxError::Database(e))) => match e.code().as_deref() {
-			// Postgres SQLSTATEs: 23505 unique_violation, 23503 foreign_key_violation,
-			// 23514 check_violation, 22001 string_data_right_truncation.
-			Some("23505") => StatusCode::CONFLICT,
-			Some("23503" | "23514" | "22001") => StatusCode::BAD_REQUEST,
-			_ => StatusCode::INTERNAL_SERVER_ERROR,
-		},
-		_ => StatusCode::INTERNAL_SERVER_ERROR,
-	};
+/// REST rendering of the transport-agnostic `ApiError`: client faults map
+/// to 4xx statuses with their message as a JSON body; internal failures
+/// are logged and stay body-less so internals never leak.
+impl IntoResponse for ApiError {
+	fn into_response(self) -> Response {
+		let (status, message) = match &self {
+			Self::NotFound(msg) => (StatusCode::NOT_FOUND, Some(msg.clone())),
+			Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, Some(msg.clone())),
+			Self::Conflict(msg) => (StatusCode::CONFLICT, Some(msg.clone())),
+			Self::Forbidden(msg) => (StatusCode::FORBIDDEN, Some(msg.clone())),
+			Self::Unauthorized => (StatusCode::UNAUTHORIZED, None),
+			Self::Internal(err) => {
+				eprintln!("{err}");
+				(StatusCode::INTERNAL_SERVER_ERROR, None)
+			}
+		};
 
-	if status == StatusCode::INTERNAL_SERVER_ERROR {
-		eprintln!("{err}");
-	}
-
-	status
-}
-
-#[allow(clippy::result_large_err)]
-pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>> {
-	match db::get_users(&app_state.conn).await {
-		Ok(users) => Ok(Json(users)),
-		Err(err) => Err(db_error_status(err).into()),
+		match message {
+			Some(msg) => (status, Json(json!({ "error": msg }))).into_response(),
+			None => status.into_response(),
+		}
 	}
 }
 
-#[allow(clippy::result_large_err)]
+pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>, ApiError> {
+	Ok(Json(db::get_users(&app_state.conn).await?))
+}
+
 pub async fn get_user(
 	State(app_state): State<AppState>,
 	Path(path_username): Path<String>,
-) -> Result<Json<User>> {
-	match db::get_user(&app_state.conn, &path_username).await {
-		Ok(user) => Ok(Json(user)),
-		Err(err) => Err(db_error_status(err).into()),
-	}
+) -> Result<Json<User>, ApiError> {
+	Ok(Json(db::get_user(&app_state.conn, &path_username).await?))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn delete_user(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
 	Path(path_username): Path<String>,
-) -> Result<Json<User>> {
+) -> Result<Json<User>, ApiError> {
 	// Users may only delete themselves.
 	if path_username.trim() != username {
-		return Err(StatusCode::FORBIDDEN.into());
+		return Err(ApiError::only_own_account());
 	}
 
-	let deleted_user = db::delete_user(&app_state.conn, &path_username)
-		.await
-		.map_err(db_error_status)?;
+	let deleted_user = db::delete_user(&app_state.conn, &path_username).await?;
 
 	app_state
 		.ws_state
 		.broadcast("users", "user_deleted", &deleted_user)
-		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.await?;
 
 	Ok(Json(deleted_user))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn get_directory(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Vec<Directory>>> {
-	match db::get_directory(&app_state.conn, id).await {
-		Ok(directory) => Ok(Json(directory)),
-		Err(err) => Err(db_error_status(err).into()),
-	}
+) -> Result<Json<Vec<Directory>>, ApiError> {
+	Ok(Json(db::get_directory(&app_state.conn, id).await?))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn create_directory(
 	State(app_state): State<AppState>,
 	Json(directory): Json<Directory>,
-) -> Result<Json<Directory>> {
-	let created_directory = db::create_directory(&app_state.conn, directory)
-		.await
-		.map_err(db_error_status)?;
+) -> Result<Json<Directory>, ApiError> {
+	let created_directory = db::create_directory(&app_state.conn, directory).await?;
 
 	app_state
 		.ws_state
 		.broadcast("directory", "directory_created", &created_directory)
-		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.await?;
 
 	Ok(Json(created_directory))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn delete_directory(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Directory>> {
-	let deleted_directory = db::delete_directory(&app_state.conn, id)
-		.await
-		.map_err(db_error_status)?;
+) -> Result<Json<Directory>, ApiError> {
+	let deleted_directory = db::delete_directory(&app_state.conn, id).await?;
 
 	app_state
 		.ws_state
 		.broadcast("directory", "directory_deleted", &deleted_directory)
-		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.await?;
 
 	Ok(Json(deleted_directory))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn get_message_thread(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Vec<Message>>> {
-	match db::get_message_thread(&app_state.conn, id).await {
-		Ok(thread) => Ok(Json(thread)),
-		Err(err) => Err(db_error_status(err).into()),
-	}
+) -> Result<Json<Vec<Message>>, ApiError> {
+	Ok(Json(db::get_message_thread(&app_state.conn, id).await?))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn get_message(
 	State(app_state): State<AppState>,
 	Path(id): Path<i32>,
-) -> Result<Json<Message>> {
-	match db::get_message(&app_state.conn, id).await {
-		Ok(message) => Ok(Json(message)),
-		Err(err) => Err(db_error_status(err).into()),
-	}
+) -> Result<Json<Message>, ApiError> {
+	Ok(Json(db::get_message(&app_state.conn, id).await?))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn create_message(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
 	Json(message): Json<Message>,
-) -> Result<Json<Message>> {
-	let created_message = db::create_message(&app_state.conn, username, message)
-		.await
-		.map_err(db_error_status)?;
+) -> Result<Json<Message>, ApiError> {
+	let created_message = db::create_message(&app_state.conn, username, message).await?;
 
 	app_state
 		.ws_state
 		.broadcast("messages", "message_created", &created_message)
-		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.await?;
 
 	Ok(Json(created_message))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn delete_message(
 	State(app_state): State<AppState>,
 	Extension(username): Extension<String>,
 	Path(id): Path<i32>,
-) -> Result<Json<Message>> {
-	let message = db::get_message(&app_state.conn, id)
-		.await
-		.map_err(db_error_status)?;
+) -> Result<Json<Message>, ApiError> {
+	let message = db::get_message(&app_state.conn, id).await?;
 
 	if message.author_username != username {
-		return Err(StatusCode::FORBIDDEN.into());
+		return Err(ApiError::only_own_messages());
 	}
 
-	let deleted_message = db::delete_message(&app_state.conn, id)
-		.await
-		.map_err(db_error_status)?;
+	let deleted_message = db::delete_message(&app_state.conn, id).await?;
 
 	app_state
 		.ws_state
 		.broadcast("messages", "message_deleted", &deleted_message)
-		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.await?;
 
 	Ok(Json(deleted_message))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn signup(
 	State(app_state): State<AppState>,
 	Json(mut user): Json<User>,
-) -> Result<Json<AuthResponse>> {
+) -> Result<Json<AuthResponse>, ApiError> {
 	validate_password(&user.password).map_err(|e| match e {
-		PasswordError::Empty => (StatusCode::BAD_REQUEST, "password must not be empty"),
-		PasswordError::TooLong => (StatusCode::BAD_REQUEST, "password must be at most 72 bytes"),
+		PasswordError::Empty => ApiError::BadRequest("password must not be empty".into()),
+		PasswordError::TooLong => ApiError::BadRequest("password must be at most 72 bytes".into()),
 	})?;
 
-	match hash_password(&user.password) {
-		Ok(hash) => user.password = hash,
-		Err(err) => {
-			eprintln!("{err}");
-			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
-		}
-	};
+	user.password = hash_password(&user.password).map_err(|e| ApiError::Internal(e.into()))?;
 
-	let created_user = db::create_user(&app_state.conn, user)
-		.await
-		.map_err(db_error_status)?;
+	let created_user = db::create_user(&app_state.conn, user).await?;
 
 	app_state
 		.ws_state
 		.broadcast("users", "user_created", &created_user)
-		.await
-		.map_err(|e| {
-			eprintln!("{e}");
-			StatusCode::INTERNAL_SERVER_ERROR
-		})?;
+		.await?;
 
-	let token = generate_token(&created_user.username).map_err(|e| {
-		eprintln!("{e}");
-		StatusCode::INTERNAL_SERVER_ERROR
-	})?;
+	let token = generate_token(&created_user.username)?;
 
 	Ok(Json(AuthResponse {
 		user: created_user,
@@ -253,24 +183,15 @@ pub async fn signup(
 	}))
 }
 
-#[allow(clippy::result_large_err)]
 pub async fn login(
 	State(app_state): State<AppState>,
 	Json(credentials): Json<Credentials>,
-) -> Result<Json<AuthResponse>> {
-	let user = match authenticate_user(&app_state.conn, &credentials).await {
-		Ok(Some(user)) => user,
-		Ok(None) => return Err(StatusCode::UNAUTHORIZED.into()),
-		Err(err) => {
-			eprintln!("{err}");
-			return Err(StatusCode::INTERNAL_SERVER_ERROR.into());
-		}
-	};
+) -> Result<Json<AuthResponse>, ApiError> {
+	let user = authenticate_user(&app_state.conn, &credentials)
+		.await?
+		.ok_or(ApiError::Unauthorized)?;
 
-	let token = generate_token(&user.username).map_err(|e| {
-		eprintln!("{e}");
-		StatusCode::INTERNAL_SERVER_ERROR
-	})?;
+	let token = generate_token(&user.username)?;
 
 	Ok(Json(AuthResponse { user, token }))
 }
