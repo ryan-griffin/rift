@@ -1,7 +1,7 @@
-use crate::db::create_message;
+use crate::db::{create_message, delete_message, get_message};
 use crate::entity::messages::Model as Message;
-use crate::websocket::{WsContext, WsModule, WsPayload};
-use anyhow::{Result, anyhow};
+use crate::error::ApiError;
+use crate::websocket::{WsContext, WsError, WsModule, WsPayload};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
@@ -19,6 +19,11 @@ struct UserTypingPayload {
 
 type UserStoppedTypingPayload = UserTypingPayload;
 
+#[derive(Deserialize)]
+struct DeleteMessagePayload {
+	id: i32,
+}
+
 pub struct MessagesModule;
 
 #[async_trait::async_trait]
@@ -27,7 +32,12 @@ impl WsModule for MessagesModule {
 		"messages"
 	}
 
-	async fn handle(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> Result<()> {
+	async fn handle(
+		&self,
+		ctx: &WsContext,
+		r#type: &str,
+		payload: &WsPayload,
+	) -> Result<(), WsError> {
 		match r#type {
 			"typing" => {
 				let TypingPayload { thread_id } = payload.get()?;
@@ -39,7 +49,8 @@ impl WsModule for MessagesModule {
 
 				ctx.state
 					.broadcast(self.name(), "user_typing", &payload)
-					.await
+					.await?;
+				Ok(())
 			}
 
 			"stop_typing" => {
@@ -52,7 +63,8 @@ impl WsModule for MessagesModule {
 
 				ctx.state
 					.broadcast(self.name(), "user_stopped_typing", &payload)
-					.await
+					.await?;
+				Ok(())
 			}
 
 			"create_message" => {
@@ -62,14 +74,33 @@ impl WsModule for MessagesModule {
 
 				ctx.state
 					.broadcast(self.name(), "message_created", &created)
-					.await
+					.await?;
+				Ok(())
 			}
 
-			other => Err(anyhow!(
+			"delete_message" => {
+				let payload = payload.get::<DeleteMessagePayload>()?;
+
+				// Only the author may delete a message; the REST endpoint
+				// answers 403 for everyone else.
+				let message = get_message(&ctx.conn, payload.id).await?;
+				if message.author_username != ctx.username {
+					return Err(ApiError::only_own_messages().into());
+				}
+
+				let deleted = delete_message(&ctx.conn, payload.id).await?;
+
+				ctx.state
+					.broadcast(self.name(), "message_deleted", &deleted)
+					.await?;
+				Ok(())
+			}
+
+			other => Err(WsError::Client(format!(
 				"Invalid message type '{}' for module '{}'",
 				other,
 				self.name()
-			)),
+			))),
 		}
 	}
 
