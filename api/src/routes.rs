@@ -11,11 +11,20 @@ use crate::error::ApiError;
 use crate::websocket::handle_socket;
 use axum::{
 	Extension, Json,
-	extract::{Path, State, WebSocketUpgrade},
-	http::StatusCode,
+	body::{Body, to_bytes},
+	extract::{Path, Request, State, WebSocketUpgrade},
+	http::{
+		HeaderMap, StatusCode,
+		header::{CONTENT_LENGTH, CONTENT_TYPE},
+	},
+	middleware::Next,
 	response::{IntoResponse, Response},
 };
 use serde_json::json;
+
+/// Refuse to buffer more than this much of a rejection body; axum's own
+/// rejection texts are short.
+const REJECTION_BODY_LIMIT: usize = 4096;
 
 /// REST rendering of the transport-agnostic `ApiError`: client faults map
 /// to 4xx statuses with their message as a JSON body; internal failures
@@ -29,7 +38,8 @@ impl IntoResponse for ApiError {
 			Self::Forbidden(msg) => (StatusCode::FORBIDDEN, Some(msg.clone())),
 			Self::Unauthorized => (StatusCode::UNAUTHORIZED, None),
 			Self::Internal(err) => {
-				eprintln!("{err}");
+				// Debug prints anyhow's full context chain; Display drops it.
+				eprintln!("{err:?}");
 				(StatusCode::INTERNAL_SERVER_ERROR, None)
 			}
 		};
@@ -39,6 +49,61 @@ impl IntoResponse for ApiError {
 			None => status.into_response(),
 		}
 	}
+}
+
+/// Whether the content type is a JSON media type: `application/json`
+/// ignoring parameters (`; charset=utf-8`) and structured-syntax suffixes
+/// (`application/problem+json`).
+fn is_json_content_type(headers: &HeaderMap) -> bool {
+	headers
+		.get(CONTENT_TYPE)
+		.and_then(|value| value.to_str().ok())
+		.and_then(|value| value.split(';').next())
+		.map(|media_type| media_type.trim().to_ascii_lowercase())
+		.is_some_and(|media_type| {
+			media_type == "application/json"
+				|| (media_type.ends_with("+json") && media_type.contains('/'))
+		})
+}
+
+/// Axum's built-in extractor rejections (invalid path segments, malformed
+/// request bodies) answer with plain-text 4xx bodies. Rewrite those into
+/// the same JSON envelope `ApiError` produces so REST errors with bodies
+/// share one shape. Empty-bodied 4xx responses are passed through
+/// untouched, headers included, and so are plain-text bodies too large
+/// for the buffer cap.
+pub async fn normalize_rejections(request: Request, next: Next) -> Response {
+	let (parts, body) = next.run(request).await.into_parts();
+
+	// Pass responses whose declared Content-Length exceeds the cap
+	// through untouched: buffering would truncate them into a
+	// content-length/empty-body mismatch. (Undeclared oversized bodies
+	// still truncate lossily, but with no content-length to contradict.)
+	let content_length = parts
+		.headers
+		.get(CONTENT_LENGTH)
+		.and_then(|value| value.to_str().ok())
+		.and_then(|value| value.parse::<u64>().ok());
+	if !parts.status.is_client_error()
+		|| is_json_content_type(&parts.headers)
+		|| content_length.is_some_and(|len| len > REJECTION_BODY_LIMIT as u64)
+	{
+		return Response::from_parts(parts, body);
+	}
+
+	let bytes = to_bytes(body, REJECTION_BODY_LIMIT)
+		.await
+		.unwrap_or_default();
+	let message = String::from_utf8_lossy(&bytes).trim().to_owned();
+
+	if message.is_empty() {
+		// Rebuild from the original parts, not from the status alone:
+		// these responses can carry headers worth keeping (axum's Allow
+		// on 405s, future Retry-After-style additions).
+		return Response::from_parts(parts, Body::empty());
+	}
+
+	(parts.status, Json(json!({ "error": message }))).into_response()
 }
 
 pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>, ApiError> {

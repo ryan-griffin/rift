@@ -58,7 +58,11 @@ async fn main() -> Result<()> {
 		.allow_methods(Any)
 		.allow_headers(Any);
 
-	let app = Router::new()
+	let public = Router::new()
+		.route("/api/signup", post(signup))
+		.route("/api/login", post(login));
+
+	let authed = Router::new()
 		.route("/api/users", get(get_users))
 		.route("/api/users/{username}", get(get_user).delete(delete_user))
 		.route(
@@ -70,9 +74,11 @@ async fn main() -> Result<()> {
 		.route("/api/message/{id}", get(get_message).delete(delete_message))
 		.route("/api/message", post(create_message))
 		.route("/api/ws", get(ws_handler))
-		.route_layer(middleware::from_fn(auth_middleware))
-		.route("/api/signup", post(signup))
-		.route("/api/login", post(login))
+		.route_layer(middleware::from_fn(auth_middleware));
+
+	let app = public
+		.merge(authed)
+		.route_layer(middleware::from_fn(normalize_rejections))
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
 			proxy(uri, app_host, app_port, headers)
 		}))
