@@ -1,7 +1,12 @@
-use crate::db::create_directory;
+use crate::db::{create_directory, delete_directory};
 use crate::entity::directory::Model as Directory;
-use crate::websocket::{WsContext, WsModule, WsPayload};
-use anyhow::{Result, anyhow};
+use crate::websocket::{WsContext, WsError, WsModule, WsPayload};
+use serde::Deserialize;
+
+#[derive(Deserialize)]
+struct DeleteDirectoryPayload {
+	id: i32,
+}
 
 pub struct DirectoryModule;
 
@@ -11,7 +16,12 @@ impl WsModule for DirectoryModule {
 		"directory"
 	}
 
-	async fn handle(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> Result<()> {
+	async fn handle(
+		&self,
+		ctx: &WsContext,
+		r#type: &str,
+		payload: &WsPayload,
+	) -> Result<(), WsError> {
 		match r#type {
 			"create_directory" => {
 				let directory = payload.get::<Directory>()?;
@@ -20,14 +30,26 @@ impl WsModule for DirectoryModule {
 
 				ctx.state
 					.broadcast(self.name(), "directory_created", &created)
-					.await
+					.await?;
+				Ok(())
 			}
 
-			other => Err(anyhow!(
+			"delete_directory" => {
+				let payload = payload.get::<DeleteDirectoryPayload>()?;
+
+				let deleted = delete_directory(&ctx.conn, payload.id).await?;
+
+				ctx.state
+					.broadcast(self.name(), "directory_deleted", &deleted)
+					.await?;
+				Ok(())
+			}
+
+			other => Err(WsError::Client(format!(
 				"Invalid message type '{}' for module '{}'",
 				other,
 				self.name()
-			)),
+			))),
 		}
 	}
 }

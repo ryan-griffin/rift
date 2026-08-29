@@ -2,13 +2,14 @@ mod directory;
 mod messages;
 mod users;
 
+use crate::error::ApiError;
 use anyhow::{Result, anyhow};
 use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream},
 };
-use sea_orm::DatabaseConnection;
+use sea_orm::{DatabaseConnection, DbErr};
 use serde::{Deserialize, Serialize, de::DeserializeOwned};
 use serde_json::Value;
 use std::{
@@ -36,8 +37,12 @@ impl WsPayload {
 		serde_json::to_value(payload).map(Self)
 	}
 
-	pub fn get<T: DeserializeOwned>(&self) -> Result<T, serde_json::Error> {
+	pub fn get<T: DeserializeOwned>(&self) -> Result<T, WsError> {
+		// Deserializing a client-supplied payload is the one place a serde
+		// error is the client's fault (like a Json extractor rejection on
+		// the REST side); serialization errors elsewhere stay internal.
 		serde_json::from_value(self.0.clone())
+			.map_err(|err| WsError::Client(format!("Invalid payload: {err}")))
 	}
 }
 
@@ -69,11 +74,53 @@ pub struct WsContext {
 	username: String,
 }
 
+/// Socket-side rendering of the transport-agnostic [`ApiError`]: `Client`
+/// messages are safe to echo back to the sender, `Internal` failures are
+/// logged and reported to the client as a generic error.
+pub enum WsError {
+	Client(String),
+	Internal(anyhow::Error),
+}
+
+impl From<DbErr> for WsError {
+	fn from(err: DbErr) -> Self {
+		// The classification policy lives in error.rs, shared with REST.
+		ApiError::from(err).into()
+	}
+}
+
+impl From<ApiError> for WsError {
+	fn from(err: ApiError) -> Self {
+		match err {
+			ApiError::Internal(err) => Self::Internal(err),
+			ApiError::NotFound(msg)
+			| ApiError::BadRequest(msg)
+			| ApiError::Conflict(msg)
+			| ApiError::Forbidden(msg) => Self::Client(msg),
+			// Dead arm today: nothing on the socket path produces
+			// Unauthorized. REST renders this variant body-less, so the
+			// socket echo fabricates the one string it needs.
+			ApiError::Unauthorized => Self::Client("Unauthorized".into()),
+		}
+	}
+}
+
+impl From<anyhow::Error> for WsError {
+	fn from(err: anyhow::Error) -> Self {
+		Self::Internal(err)
+	}
+}
+
 #[async_trait::async_trait]
 pub trait WsModule: Send + Sync + 'static {
 	fn name(&self) -> &'static str;
 
-	async fn handle(&self, _ctx: &WsContext, _type: &str, _payload: &WsPayload) -> Result<()> {
+	async fn handle(
+		&self,
+		_ctx: &WsContext,
+		_type: &str,
+		_payload: &WsPayload,
+	) -> Result<(), WsError> {
 		Ok(())
 	}
 
@@ -194,8 +241,16 @@ pub async fn handle_socket(
 					ClientEvent::Message(env) => {
 						if let Some(module) = state.modules.get(env.module.as_str()) {
 							if let Err(err) = module.handle(&ctx, &env.r#type, &env.payload).await {
-								eprintln!("{err}");
-								if let Err(err) = send_error_to_client(&sender, "Internal server error").await {
+								let msg = match err {
+									WsError::Client(msg) => msg,
+									WsError::Internal(err) => {
+										// Debug prints anyhow's full context chain.
+										eprintln!("{err:?}");
+										"Internal server error".to_string()
+									}
+								};
+
+								if let Err(err) = send_error_to_client(&sender, &msg).await {
 									eprintln!("{err}");
 									break;
 								}
