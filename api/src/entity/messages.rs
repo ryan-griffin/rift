@@ -1,21 +1,16 @@
 use sea_orm::entity::prelude::*;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 
-#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, DeriveEntityModel, Eq, Serialize)]
 #[sea_orm(table_name = "messages")]
 pub struct Model {
 	#[sea_orm(primary_key)]
-	#[serde(skip_deserializing)]
 	pub id: i32,
 	pub content: String,
-	#[serde(skip_deserializing)]
 	pub author_username: String,
 	pub directory_id: i32,
-	#[serde(skip_deserializing)]
 	pub created_at: DateTimeWithTimeZone,
-	#[serde(skip_deserializing)]
 	pub edited_at: Option<DateTimeWithTimeZone>,
-	#[serde(skip_deserializing)]
 	pub deleted_at: Option<DateTimeWithTimeZone>,
 	pub parent_id: Option<i32>,
 }

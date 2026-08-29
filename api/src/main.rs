@@ -3,6 +3,7 @@ mod db;
 mod entity;
 mod error;
 mod routes;
+mod service;
 mod websocket;
 use anyhow::{Context, Result};
 use auth::auth_middleware;

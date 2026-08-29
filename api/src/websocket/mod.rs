@@ -2,7 +2,7 @@ mod directory;
 mod messages;
 mod users;
 
-use crate::error::ApiError;
+use crate::error::ServiceError;
 use anyhow::{Result, anyhow};
 use axum::extract::ws::{Message as WsMessage, WebSocket};
 use futures_util::{
@@ -47,6 +47,7 @@ impl WsPayload {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WsEnvelope {
 	module: String,
 	#[serde(rename = "type")]
@@ -74,7 +75,7 @@ pub struct WsContext {
 	username: String,
 }
 
-/// Socket-side rendering of the transport-agnostic [`ApiError`]: `Client`
+/// Socket-side rendering of the transport-agnostic [`ServiceError`]: `Client`
 /// messages are safe to echo back to the sender, `Internal` failures are
 /// logged and reported to the client as a generic error.
 pub enum WsError {
@@ -85,22 +86,22 @@ pub enum WsError {
 impl From<DbErr> for WsError {
 	fn from(err: DbErr) -> Self {
 		// The classification policy lives in error.rs, shared with REST.
-		ApiError::from(err).into()
+		ServiceError::from(err).into()
 	}
 }
 
-impl From<ApiError> for WsError {
-	fn from(err: ApiError) -> Self {
+impl From<ServiceError> for WsError {
+	fn from(err: ServiceError) -> Self {
 		match err {
-			ApiError::Internal(err) => Self::Internal(err),
-			ApiError::NotFound(msg)
-			| ApiError::BadRequest(msg)
-			| ApiError::Conflict(msg)
-			| ApiError::Forbidden(msg) => Self::Client(msg),
+			ServiceError::Internal(err) => Self::Internal(err),
+			ServiceError::NotFound(msg)
+			| ServiceError::BadRequest(msg)
+			| ServiceError::Conflict(msg)
+			| ServiceError::Forbidden(msg) => Self::Client(msg),
 			// Dead arm today: nothing on the socket path produces
 			// Unauthorized. REST renders this variant body-less, so the
 			// socket echo fabricates the one string it needs.
-			ApiError::Unauthorized => Self::Client("Unauthorized".into()),
+			ServiceError::Unauthorized => Self::Client("Unauthorized".into()),
 		}
 	}
 }
@@ -177,6 +178,7 @@ impl WsState {
 
 enum ClientEvent {
 	Message(WsEnvelope),
+	Invalid(String),
 	Disconnect,
 	Continue,
 }
@@ -185,10 +187,7 @@ async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> Clien
 	match receiver.next().await {
 		Some(Ok(WsMessage::Text(text))) => match serde_json::from_str(&text) {
 			Ok(env) => ClientEvent::Message(env),
-			Err(err) => {
-				eprintln!("Invalid message from client: {err}");
-				ClientEvent::Continue
-			}
+			Err(err) => ClientEvent::Invalid(format!("Invalid message envelope: {err}")),
 		},
 		Some(Ok(WsMessage::Close(_))) | None => ClientEvent::Disconnect,
 		Some(Ok(_)) => ClientEvent::Continue,
@@ -263,6 +262,12 @@ pub async fn handle_socket(
 							break;
 						}
 					}
+					ClientEvent::Invalid(msg) => {
+						if let Err(err) = send_error_to_client(&sender, &msg).await {
+							eprintln!("{err}");
+							break;
+						}
+					},
 					ClientEvent::Disconnect => break,
 					ClientEvent::Continue => {},
 				}
