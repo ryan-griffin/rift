@@ -6,7 +6,7 @@ use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
 use crate::error::ServiceError;
-use sea_orm::{DatabaseConnection, TransactionTrait};
+use sea_orm::{AccessMode, ConnectionTrait, DatabaseConnection, IsolationLevel, TransactionTrait};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -170,8 +170,14 @@ pub async fn get_directory(
 	db: &DatabaseConnection,
 	id: i32,
 ) -> Result<Vec<Directory>, ServiceError> {
-	let directory = require_directory(db, validate_id(id, "directory")?).await?;
-	Ok(db::load_directory_tree(db, directory).await?)
+	let id = validate_id(id, "directory")?;
+	let directories = db::load_directory_tree(db, id).await?;
+	if directories.is_empty() {
+		return Err(ServiceError::NotFound(format!(
+			"Directory with id {id} not found"
+		)));
+	}
+	Ok(directories)
 }
 
 pub async fn create_directory(
@@ -209,8 +215,28 @@ pub async fn get_message_thread(
 	db: &DatabaseConnection,
 	id: i32,
 ) -> Result<Vec<Message>, ServiceError> {
-	let thread = require_thread(db, id).await?;
-	Ok(db::list_messages_by_directory(db, thread.id).await?)
+	let txn = db
+		.begin_with_config(
+			Some(IsolationLevel::RepeatableRead),
+			Some(AccessMode::ReadOnly),
+		)
+		.await?;
+	let result = async {
+		let thread = require_thread(&txn, id).await?;
+		Ok(db::list_messages_by_directory(&txn, thread.id).await?)
+	}
+	.await;
+
+	match result {
+		Ok(messages) => {
+			txn.commit().await?;
+			Ok(messages)
+		}
+		Err(err) => {
+			txn.rollback().await?;
+			Err(err)
+		}
+	}
 }
 
 pub async fn get_message(db: &DatabaseConnection, id: i32) -> Result<Message, ServiceError> {
@@ -382,13 +408,13 @@ async fn require_user(db: &DatabaseConnection, username: &str) -> Result<User, S
 		.ok_or_else(|| ServiceError::NotFound(format!("User with username {username} not found")))
 }
 
-async fn require_directory(db: &DatabaseConnection, id: i32) -> Result<Directory, ServiceError> {
+async fn require_directory(db: &impl ConnectionTrait, id: i32) -> Result<Directory, ServiceError> {
 	db::find_directory_by_id(db, id)
 		.await?
 		.ok_or_else(|| ServiceError::NotFound(format!("Directory with id {id} not found")))
 }
 
-pub async fn require_thread(db: &DatabaseConnection, id: i32) -> Result<Directory, ServiceError> {
+pub async fn require_thread(db: &impl ConnectionTrait, id: i32) -> Result<Directory, ServiceError> {
 	let id = validate_thread_id(id)?;
 	let directory = require_directory(db, id).await?;
 	if directory.r#type != "thread" {
