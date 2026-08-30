@@ -4,7 +4,7 @@ mod users;
 
 use crate::error::ApiError;
 use anyhow::{Result, anyhow};
-use axum::extract::ws::{Message as WsMessage, WebSocket};
+use axum::extract::ws::{CloseFrame, Message as WsMessage, WebSocket, close_code};
 use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream},
@@ -177,26 +177,42 @@ impl WsState {
 
 enum ClientEvent {
 	Message(WsEnvelope),
+	UnsupportedData,
 	Disconnect,
 	Continue,
 }
 
 async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> ClientEvent {
 	match receiver.next().await {
-		Some(Ok(WsMessage::Text(text))) => match serde_json::from_str(&text) {
+		Some(Ok(message)) => classify_client_message(message),
+		Some(Err(err)) => {
+			eprintln!("WebSocket error: {err}");
+			ClientEvent::Disconnect
+		}
+		None => ClientEvent::Disconnect,
+	}
+}
+
+fn classify_client_message(message: WsMessage) -> ClientEvent {
+	match message {
+		WsMessage::Text(text) => match serde_json::from_str(&text) {
 			Ok(env) => ClientEvent::Message(env),
 			Err(err) => {
 				eprintln!("Invalid message from client: {err}");
 				ClientEvent::Continue
 			}
 		},
-		Some(Ok(WsMessage::Close(_))) | None => ClientEvent::Disconnect,
-		Some(Ok(_)) => ClientEvent::Continue,
-		Some(Err(err)) => {
-			eprintln!("WebSocket error: {err}");
-			ClientEvent::Disconnect
-		}
+		WsMessage::Close(_) => ClientEvent::Disconnect,
+		WsMessage::Binary(_) => ClientEvent::UnsupportedData,
+		WsMessage::Ping(_) | WsMessage::Pong(_) => ClientEvent::Continue,
 	}
+}
+
+fn unsupported_data_close_message() -> WsMessage {
+	WsMessage::Close(Some(CloseFrame {
+		code: close_code::UNSUPPORTED,
+		reason: "Binary messages are not supported".into(),
+	}))
 }
 
 async fn send_msg_to_client(
@@ -263,6 +279,13 @@ pub async fn handle_socket(
 							break;
 						}
 					}
+					ClientEvent::UnsupportedData => {
+						let mut sender_guard = sender.lock().await;
+						if let Err(err) = sender_guard.send(unsupported_data_close_message()).await {
+							eprintln!("{err}");
+						}
+						break;
+					}
 					ClientEvent::Disconnect => break,
 					ClientEvent::Continue => {},
 				}
@@ -278,5 +301,28 @@ pub async fn handle_socket(
 				}
 			}
 		}
+	}
+}
+
+#[cfg(test)]
+mod tests {
+	use super::{ClientEvent, classify_client_message, unsupported_data_close_message};
+	use axum::extract::ws::{Message, close_code};
+
+	#[test]
+	fn binary_messages_are_rejected_without_affecting_control_frames() {
+		assert!(matches!(
+			classify_client_message(Message::Binary(vec![1, 2, 3].into())),
+			ClientEvent::UnsupportedData
+		));
+		assert!(matches!(
+			classify_client_message(Message::Ping(vec![].into())),
+			ClientEvent::Continue
+		));
+		let Message::Close(Some(frame)) = unsupported_data_close_message() else {
+			panic!("binary messages must produce a close frame");
+		};
+		assert_eq!(frame.code, close_code::UNSUPPORTED);
+		assert_eq!(frame.reason, "Binary messages are not supported");
 	}
 }
