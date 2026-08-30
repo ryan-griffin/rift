@@ -181,6 +181,7 @@ enum ClientEvent {
 	Message(WsEnvelope),
 	Invalid(String),
 	MessageTooLarge,
+	PeerClose,
 	Disconnect,
 	Continue,
 }
@@ -191,7 +192,8 @@ async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> Clien
 			Ok(env) => ClientEvent::Message(env),
 			Err(err) => ClientEvent::Invalid(format!("Invalid message envelope: {err}")),
 		},
-		Some(Ok(WsMessage::Close(_))) | None => ClientEvent::Disconnect,
+		Some(Ok(WsMessage::Close(_))) => ClientEvent::PeerClose,
+		None => ClientEvent::Disconnect,
 		Some(Ok(_)) => ClientEvent::Continue,
 		Some(Err(err)) => {
 			let err = err.into_inner();
@@ -288,6 +290,13 @@ pub async fn handle_socket(
 						let mut sender = sender.lock().await;
 						if let Err(err) = sender.send(WsMessage::Close(Some(frame))).await {
 							eprintln!("Failed to close oversized WebSocket message: {err}");
+						}
+						break;
+					},
+					ClientEvent::PeerClose => {
+						let mut sender = sender.lock().await;
+						if let Err(err) = sender.close().await {
+							eprintln!("Failed to acknowledge WebSocket close: {err}");
 						}
 						break;
 					},
