@@ -6,7 +6,7 @@ use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
 use crate::error::ServiceError;
-use sea_orm::DatabaseConnection;
+use sea_orm::{DatabaseConnection, TransactionTrait};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -224,16 +224,41 @@ pub async fn create_message(
 	input: CreateMessageInput,
 ) -> Result<Message, ServiceError> {
 	let input = input.validate()?;
-	require_thread(db, input.directory_id).await?;
 
-	if let Some(parent_id) = input.parent_id {
-		let parent = require_message(db, parent_id)
-			.await
-			.map_err(|err| match err {
-				ServiceError::NotFound(_) => {
-					ServiceError::NotFound(format!("Parent message with id {parent_id} not found"))
-				}
-				other => other,
+	let Some(parent_id) = input.parent_id else {
+		require_thread(db, input.directory_id).await?;
+		return Ok(db::insert_message(
+			db,
+			author_username,
+			input.content,
+			input.directory_id,
+			None,
+		)
+		.await?);
+	};
+
+	let txn = db.begin().await?;
+	let result = async {
+		let directory = db::find_directory_by_id_for_key_share(&txn, input.directory_id)
+			.await?
+			.ok_or_else(|| {
+				ServiceError::NotFound(format!(
+					"Directory with id {} not found",
+					input.directory_id
+				))
+			})?;
+
+		if directory.r#type != "thread" {
+			return Err(ServiceError::BadRequest(format!(
+				"Directory {} is a '{}', not a thread",
+				directory.id, directory.r#type
+			)));
+		}
+
+		let parent = db::find_message_by_id_for_share(&txn, parent_id)
+			.await?
+			.ok_or_else(|| {
+				ServiceError::NotFound(format!("Parent message with id {parent_id} not found"))
 			})?;
 
 		if parent.deleted_at.is_some() {
@@ -246,16 +271,28 @@ pub async fn create_message(
 				"Parent message {parent_id} belongs to another thread"
 			)));
 		}
-	}
 
-	Ok(db::insert_message(
-		db,
-		author_username,
-		input.content,
-		input.directory_id,
-		input.parent_id,
-	)
-	.await?)
+		Ok(db::insert_message(
+			&txn,
+			author_username,
+			input.content,
+			input.directory_id,
+			Some(parent_id),
+		)
+		.await?)
+	}
+	.await;
+
+	match result {
+		Ok(message) => {
+			txn.commit().await?;
+			Ok(message)
+		}
+		Err(err) => {
+			txn.rollback().await?;
+			Err(err)
+		}
+	}
 }
 
 pub async fn delete_message(
