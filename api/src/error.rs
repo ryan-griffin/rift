@@ -7,6 +7,7 @@ use sea_orm::{DbErr, RuntimeErr, SqlxError};
 #[derive(Debug)]
 pub enum ServiceError {
 	NotFound(String),
+	Gone(String),
 	BadRequest(String),
 	Conflict(String),
 	Forbidden(String),

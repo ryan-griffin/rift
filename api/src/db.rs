@@ -38,20 +38,23 @@ pub async fn insert_user(
 	.await
 }
 
-/// Tombstone a user so their messages continue to resolve to an author.
-pub async fn tombstone_user(db: &DatabaseConnection, user: User) -> Result<User, DbErr> {
-	if user.deleted_at.is_some() {
-		return Ok(user);
-	}
+/// Tombstone a live user so their messages continue to resolve to an author.
+pub async fn tombstone_user_by_username(
+	db: &DatabaseConnection,
+	username: &str,
+) -> Result<Option<User>, DbErr> {
+	let mut updated = users::Entity::update_many()
+		.set(users::ActiveModel {
+			password: Set(String::new()),
+			deleted_at: Set(Some(Utc::now().into())),
+			..Default::default()
+		})
+		.filter(users::Column::Username.eq(username))
+		.filter(users::Column::DeletedAt.is_null())
+		.exec_with_returning(db)
+		.await?;
 
-	users::ActiveModel {
-		username: Set(user.username),
-		password: Set(String::new()),
-		deleted_at: Set(Some(Utc::now().into())),
-		..Default::default()
-	}
-	.update(db)
-	.await
+	Ok(updated.pop())
 }
 
 pub async fn find_directory_by_id(
@@ -100,9 +103,14 @@ pub async fn insert_directory(
 }
 
 /// Hard delete; cascading foreign keys remove descendants and messages.
-pub async fn delete_directory_by_id(db: &DatabaseConnection, id: i32) -> Result<(), DbErr> {
-	directory::Entity::delete_by_id(id).exec(db).await?;
-	Ok(())
+pub async fn delete_directory_by_id(
+	db: &DatabaseConnection,
+	id: i32,
+) -> Result<Option<Directory>, DbErr> {
+	let mut deleted = directory::Entity::delete_by_id(id)
+		.exec_with_returning(db)
+		.await?;
+	Ok(deleted.pop())
 }
 
 pub async fn list_messages_by_directory(
@@ -141,21 +149,23 @@ pub async fn insert_message(
 	.await
 }
 
-/// Tombstone a message while preserving reply links.
-pub async fn tombstone_message(
+/// Tombstone a live message owned by the authenticated user.
+pub async fn tombstone_message_by_id(
 	db: &DatabaseConnection,
-	message: Message,
-) -> Result<Message, DbErr> {
-	if message.deleted_at.is_some() {
-		return Ok(message);
-	}
+	id: i32,
+	author_username: &str,
+) -> Result<Option<Message>, DbErr> {
+	let mut updated = messages::Entity::update_many()
+		.set(messages::ActiveModel {
+			content: Set(String::new()),
+			deleted_at: Set(Some(Utc::now().into())),
+			..Default::default()
+		})
+		.filter(messages::Column::Id.eq(id))
+		.filter(messages::Column::AuthorUsername.eq(author_username))
+		.filter(messages::Column::DeletedAt.is_null())
+		.exec_with_returning(db)
+		.await?;
 
-	messages::ActiveModel {
-		id: Set(message.id),
-		content: Set(String::new()),
-		deleted_at: Set(Some(Utc::now().into())),
-		..Default::default()
-	}
-	.update(db)
-	.await
+	Ok(updated.pop())
 }
