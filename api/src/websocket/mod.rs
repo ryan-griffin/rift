@@ -4,7 +4,7 @@ mod users;
 
 use crate::error::ServiceError;
 use anyhow::{Result, anyhow};
-use axum::extract::ws::{Message as WsMessage, WebSocket};
+use axum::extract::ws::{CloseFrame, Message as WsMessage, WebSocket, close_code};
 use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream},
@@ -20,6 +20,7 @@ use tokio::sync::{
 	Mutex, broadcast,
 	broadcast::{Receiver, Sender},
 };
+use tungstenite::{Error as TungsteniteError, error::CapacityError};
 
 static MODULE_LIST: LazyLock<Vec<&'static dyn WsModule>> = LazyLock::new(|| {
 	vec![
@@ -179,6 +180,7 @@ impl WsState {
 enum ClientEvent {
 	Message(WsEnvelope),
 	Invalid(String),
+	MessageTooLarge,
 	Disconnect,
 	Continue,
 }
@@ -192,8 +194,18 @@ async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> Clien
 		Some(Ok(WsMessage::Close(_))) | None => ClientEvent::Disconnect,
 		Some(Ok(_)) => ClientEvent::Continue,
 		Some(Err(err)) => {
-			eprintln!("WebSocket error: {err}");
-			ClientEvent::Disconnect
+			let err = err.into_inner();
+			if matches!(
+				err.downcast_ref::<TungsteniteError>(),
+				Some(TungsteniteError::Capacity(
+					CapacityError::MessageTooLong { .. }
+				))
+			) {
+				ClientEvent::MessageTooLarge
+			} else {
+				eprintln!("WebSocket error: {err}");
+				ClientEvent::Disconnect
+			}
 		}
 	}
 }
@@ -267,6 +279,17 @@ pub async fn handle_socket(
 							eprintln!("{err}");
 							break;
 						}
+					},
+					ClientEvent::MessageTooLarge => {
+						let frame = CloseFrame {
+							code: close_code::SIZE,
+							reason: "Message exceeds the 64 KiB limit".into(),
+						};
+						let mut sender = sender.lock().await;
+						if let Err(err) = sender.send(WsMessage::Close(Some(frame))).await {
+							eprintln!("Failed to close oversized WebSocket message: {err}");
+						}
+						break;
 					},
 					ClientEvent::Disconnect => break,
 					ClientEvent::Continue => {},
