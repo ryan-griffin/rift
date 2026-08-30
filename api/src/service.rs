@@ -6,7 +6,7 @@ use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
 use crate::error::ServiceError;
-use sea_orm::DatabaseConnection;
+use sea_orm::{DatabaseConnection, DbErr};
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -256,7 +256,13 @@ pub async fn delete_message(
 		));
 	}
 
-	Ok(db::tombstone_message(db, message).await?)
+	match db::tombstone_message(db, message).await {
+		Ok(message) => Ok(message),
+		Err(DbErr::RecordNotUpdated) => Err(ServiceError::NotFound(format!(
+			"Message with id {id} not found"
+		))),
+		Err(err) => Err(err.into()),
+	}
 }
 
 pub fn validate_thread_id(id: i32) -> Result<i32, ServiceError> {
