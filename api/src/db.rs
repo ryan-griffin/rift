@@ -5,9 +5,12 @@ use crate::entity::{
 use chrono::Utc;
 use sea_orm::{
 	ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
-	EntityTrait, QueryFilter, QuerySelect, Set, sea_query::LockType,
+	EntityTrait, QueryFilter, QuerySelect, Set,
+	sea_query::{
+		Alias, CommonTableExpression, Expr, JoinType, LockType, Query, SelectStatement, UnionType,
+		WithClause,
+	},
 };
-use std::collections::VecDeque;
 
 pub async fn list_users(db: &DatabaseConnection) -> Result<Vec<User>, DbErr> {
 	users::Entity::find().all(db).await
@@ -59,7 +62,7 @@ pub async fn tombstone_user_by_username(
 }
 
 pub async fn find_directory_by_id(
-	db: &DatabaseConnection,
+	db: &impl ConnectionTrait,
 	id: i32,
 ) -> Result<Option<Directory>, DbErr> {
 	directory::Entity::find_by_id(id).one(db).await
@@ -75,26 +78,61 @@ pub async fn find_directory_by_id_for_key_share(
 		.await
 }
 
+fn directory_tree_query(root_id: i32) -> SelectStatement {
+	let tree = Alias::new("directory_tree");
+	let columns = [
+		directory::Column::Id,
+		directory::Column::Name,
+		directory::Column::Type,
+		directory::Column::ParentId,
+	];
+
+	let base = Query::select()
+		.columns(columns.map(|column| (directory::Entity, column)))
+		.from(directory::Entity)
+		.and_where(Expr::col((directory::Entity, directory::Column::Id)).eq(root_id))
+		.to_owned();
+
+	let recursive = Query::select()
+		.columns(columns.map(|column| (directory::Entity, column)))
+		.from(directory::Entity)
+		.join(
+			JoinType::InnerJoin,
+			tree.clone(),
+			Expr::col((directory::Entity, directory::Column::ParentId))
+				.equals((tree.clone(), directory::Column::Id)),
+		)
+		.to_owned();
+
+	let cte = CommonTableExpression::new()
+		.query(
+			base.clone()
+				.union(UnionType::Distinct, recursive)
+				.to_owned(),
+		)
+		.columns(columns)
+		.table_name(tree.clone())
+		.to_owned();
+	let with_clause = WithClause::new().recursive(true).cte(cte).to_owned();
+	let mut query = Query::select()
+		.columns(columns.map(|column| (tree.clone(), column)))
+		.from(tree)
+		.to_owned();
+	query.with_cte(with_clause);
+	query
+}
+
 pub async fn load_directory_tree(
 	db: &DatabaseConnection,
-	root: Directory,
+	root_id: i32,
 ) -> Result<Vec<Directory>, DbErr> {
-	let mut queue = VecDeque::from([root.id]);
-	let mut results = vec![root];
-
-	while let Some(current_parent_id) = queue.pop_front() {
-		let children = directory::Entity::find()
-			.filter(directory::Column::ParentId.eq(Some(current_parent_id)))
-			.all(db)
-			.await?;
-
-		for child in children {
-			queue.push_back(child.id);
-			results.push(child);
-		}
-	}
-
-	Ok(results)
+	let statement = db
+		.get_database_backend()
+		.build(&directory_tree_query(root_id));
+	directory::Entity::find()
+		.from_raw_sql(statement)
+		.all(db)
+		.await
 }
 
 pub async fn insert_directory(
@@ -125,7 +163,7 @@ pub async fn delete_directory_by_id(
 }
 
 pub async fn list_messages_by_directory(
-	db: &DatabaseConnection,
+	db: &impl ConnectionTrait,
 	directory_id: i32,
 ) -> Result<Vec<Message>, DbErr> {
 	messages::Entity::find()
