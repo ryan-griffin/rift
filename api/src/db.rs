@@ -4,7 +4,8 @@ use crate::entity::{
 };
 use chrono::Utc;
 use sea_orm::{
-	ActiveModelTrait, ColumnTrait, DatabaseConnection, DbErr, EntityTrait, QueryFilter, Set,
+	ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
+	EntityTrait, QueryFilter, QuerySelect, Set, sea_query::LockType,
 };
 use std::collections::VecDeque;
 
@@ -62,6 +63,16 @@ pub async fn find_directory_by_id(
 	id: i32,
 ) -> Result<Option<Directory>, DbErr> {
 	directory::Entity::find_by_id(id).one(db).await
+}
+
+pub async fn find_directory_by_id_for_key_share(
+	db: &DatabaseTransaction,
+	id: i32,
+) -> Result<Option<Directory>, DbErr> {
+	directory::Entity::find_by_id(id)
+		.lock(LockType::KeyShare)
+		.one(db)
+		.await
 }
 
 pub async fn load_directory_tree(
@@ -130,8 +141,15 @@ pub async fn find_message_by_id(
 	messages::Entity::find_by_id(id).one(db).await
 }
 
+pub async fn find_message_by_id_for_share(
+	db: &DatabaseTransaction,
+	id: i32,
+) -> Result<Option<Message>, DbErr> {
+	messages::Entity::find_by_id(id).lock_shared().one(db).await
+}
+
 pub async fn insert_message(
-	db: &DatabaseConnection,
+	db: &impl ConnectionTrait,
 	author_username: String,
 	content: String,
 	directory_id: i32,
