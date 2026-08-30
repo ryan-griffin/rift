@@ -28,6 +28,7 @@ impl IntoResponse for ServiceError {
 	fn into_response(self) -> Response {
 		let (status, message) = match &self {
 			Self::NotFound(msg) => (StatusCode::NOT_FOUND, Some(msg.clone())),
+			Self::Gone(msg) => (StatusCode::GONE, Some(msg.clone())),
 			Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, Some(msg.clone())),
 			Self::Conflict(msg) => (StatusCode::CONFLICT, Some(msg.clone())),
 			Self::Forbidden(msg) => (StatusCode::FORBIDDEN, Some(msg.clone())),

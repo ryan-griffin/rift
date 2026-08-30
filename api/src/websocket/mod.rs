@@ -96,6 +96,7 @@ impl From<ServiceError> for WsError {
 		match err {
 			ServiceError::Internal(err) => Self::Internal(err),
 			ServiceError::NotFound(msg)
+			| ServiceError::Gone(msg)
 			| ServiceError::BadRequest(msg)
 			| ServiceError::Conflict(msg)
 			| ServiceError::Forbidden(msg) => Self::Client(msg),

@@ -6,7 +6,7 @@ use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
 use crate::error::ServiceError;
-use sea_orm::{DatabaseConnection, DbErr};
+use sea_orm::DatabaseConnection;
 use serde::Deserialize;
 
 #[derive(Debug, Deserialize)]
@@ -149,8 +149,21 @@ pub async fn delete_user(
 		));
 	}
 
-	let user = require_user(db, authenticated_username).await?;
-	Ok(db::tombstone_user(db, user).await?)
+	if let Some(user) = db::tombstone_user_by_username(db, authenticated_username).await? {
+		return Ok(user);
+	}
+
+	match db::find_user_by_username(db, authenticated_username).await? {
+		Some(user) if user.deleted_at.is_some() => Err(ServiceError::Gone(format!(
+			"User with username {authenticated_username} is already deleted"
+		))),
+		Some(_) => Err(ServiceError::Conflict(format!(
+			"User with username {authenticated_username} changed concurrently; retry the request"
+		))),
+		None => Err(ServiceError::NotFound(format!(
+			"User with username {authenticated_username} not found"
+		))),
+	}
 }
 
 pub async fn get_directory(
@@ -186,9 +199,10 @@ pub async fn create_directory(
 }
 
 pub async fn delete_directory(db: &DatabaseConnection, id: i32) -> Result<Directory, ServiceError> {
-	let directory = require_directory(db, validate_id(id, "directory")?).await?;
-	db::delete_directory_by_id(db, directory.id).await?;
-	Ok(directory)
+	let id = validate_id(id, "directory")?;
+	db::delete_directory_by_id(db, id)
+		.await?
+		.ok_or_else(|| ServiceError::NotFound(format!("Directory with id {id} not found")))
 }
 
 pub async fn get_message_thread(
@@ -249,19 +263,24 @@ pub async fn delete_message(
 	authenticated_username: &str,
 	id: i32,
 ) -> Result<Message, ServiceError> {
-	let message = get_message(db, id).await?;
-	if message.author_username != authenticated_username {
-		return Err(ServiceError::Forbidden(
-			"You can only delete your own messages".into(),
-		));
+	let id = validate_id(id, "message")?;
+	if let Some(message) = db::tombstone_message_by_id(db, id, authenticated_username).await? {
+		return Ok(message);
 	}
 
-	match db::tombstone_message(db, message).await {
-		Ok(message) => Ok(message),
-		Err(DbErr::RecordNotUpdated) => Err(ServiceError::NotFound(format!(
+	match db::find_message_by_id(db, id).await? {
+		None => Err(ServiceError::NotFound(format!(
 			"Message with id {id} not found"
 		))),
-		Err(err) => Err(err.into()),
+		Some(message) if message.author_username != authenticated_username => Err(
+			ServiceError::Forbidden("You can only delete your own messages".into()),
+		),
+		Some(message) if message.deleted_at.is_some() => Err(ServiceError::Gone(format!(
+			"Message with id {id} is already deleted"
+		))),
+		Some(_) => Err(ServiceError::Conflict(format!(
+			"Message with id {id} changed concurrently; retry the request"
+		))),
 	}
 }
 
