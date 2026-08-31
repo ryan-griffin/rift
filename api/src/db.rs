@@ -5,7 +5,7 @@ use crate::entity::{
 use chrono::Utc;
 use sea_orm::{
 	ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
-	EntityTrait, QueryFilter, QuerySelect, Set,
+	EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set,
 	sea_query::{
 		Alias, CommonTableExpression, Expr, JoinType, LockType, Query, SelectStatement, UnionType,
 		WithClause,
@@ -168,6 +168,8 @@ pub async fn list_messages_by_directory(
 ) -> Result<Vec<Message>, DbErr> {
 	messages::Entity::find()
 		.filter(messages::Column::DirectoryId.eq(directory_id))
+		.order_by_asc(messages::Column::CreatedAt)
+		.order_by_asc(messages::Column::Id)
 		.all(db)
 		.await
 }
