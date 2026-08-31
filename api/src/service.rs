@@ -288,7 +288,7 @@ pub async fn create_message(
 			})?;
 
 		if parent.deleted_at.is_some() {
-			return Err(ServiceError::BadRequest(format!(
+			return Err(ServiceError::Conflict(format!(
 				"Parent message {parent_id} is deleted"
 			)));
 		}
