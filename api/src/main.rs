@@ -93,13 +93,42 @@ async fn main() -> Result<()> {
 
 	let listener = TcpListener::bind(format!("{api_host}:{api_port}")).await?;
 	println!("Server running on http://{api_host}:{api_port}");
-	axum::serve(listener, app).await?;
+	axum::serve(listener, app)
+		.with_graceful_shutdown(shutdown_signal())
+		.await?;
+	println!("Server stopped");
 
 	Ok(())
 }
 
 async fn api_not_found() -> ServiceError {
 	ServiceError::NotFound("API route not found".into())
+}
+
+async fn shutdown_signal() {
+	let ctrl_c = async {
+		tokio::signal::ctrl_c()
+			.await
+			.expect("Failed to install Ctrl-C handler");
+	};
+
+	#[cfg(unix)]
+	let terminate = async {
+		tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+			.expect("Failed to install SIGTERM handler")
+			.recv()
+			.await;
+	};
+
+	#[cfg(not(unix))]
+	let terminate = std::future::pending::<()>();
+
+	tokio::select! {
+		_ = ctrl_c => {},
+		_ = terminate => {},
+	}
+
+	println!("\nStopping server...");
 }
 
 async fn proxy(
