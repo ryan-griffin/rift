@@ -21,8 +21,8 @@ use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use routes::*;
 use sea_orm::{Database, DatabaseConnection};
-use std::{env, sync::LazyLock};
-use tokio::net::TcpListener;
+use std::{env, future::IntoFuture, sync::LazyLock, time::Duration};
+use tokio::{net::TcpListener, sync::oneshot};
 use tower_http::cors::{Any, CorsLayer};
 use websocket::WsState;
 
@@ -33,6 +33,7 @@ pub struct AppState {
 }
 
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
+const SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(8);
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -93,10 +94,34 @@ async fn main() -> Result<()> {
 
 	let listener = TcpListener::bind(format!("{api_host}:{api_port}")).await?;
 	println!("Server running on http://{api_host}:{api_port}");
-	axum::serve(listener, app)
-		.with_graceful_shutdown(shutdown_signal())
-		.await?;
-	println!("Server stopped");
+
+	let (shutdown_tx, shutdown_rx) = oneshot::channel();
+	let server = axum::serve(listener, app)
+		.with_graceful_shutdown(async {
+			let _ = shutdown_rx.await;
+		})
+		.into_future();
+	tokio::pin!(server);
+
+	tokio::select! {
+		result = &mut server => {
+			result?;
+			println!("Server stopped");
+		}
+		_ = shutdown_signal() => {
+			let _ = shutdown_tx.send(());
+
+			match tokio::time::timeout(SHUTDOWN_GRACE_PERIOD, &mut server).await {
+				Ok(result) => {
+					result?;
+					println!("Server stopped");
+				}
+				Err(_) => {
+					eprintln!("Shutdown deadline exceeded; forcing server stop");
+				}
+			}
+		}
+	}
 
 	Ok(())
 }
