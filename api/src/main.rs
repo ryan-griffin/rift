@@ -16,6 +16,7 @@ use axum::{
 	routing::{get, post},
 };
 use dotenvy::dotenv;
+use error::ServiceError;
 use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use routes::*;
@@ -60,26 +61,30 @@ async fn main() -> Result<()> {
 		.allow_headers(Any);
 
 	let public = Router::new()
-		.route("/api/signup", post(signup))
-		.route("/api/login", post(login));
+		.route("/signup", post(signup))
+		.route("/login", post(login));
 
 	let authed = Router::new()
-		.route("/api/users", get(get_users))
-		.route("/api/users/{username}", get(get_user).delete(delete_user))
+		.route("/users", get(get_users))
+		.route("/users/{username}", get(get_user).delete(delete_user))
 		.route(
-			"/api/directory/{id}",
+			"/directory/{id}",
 			get(get_directory).delete(delete_directory),
 		)
-		.route("/api/directory", post(create_directory))
-		.route("/api/thread/{id}", get(get_message_thread))
-		.route("/api/message/{id}", get(get_message).delete(delete_message))
-		.route("/api/message", post(create_message))
-		.route("/api/ws", get(ws_handler))
+		.route("/directory", post(create_directory))
+		.route("/thread/{id}", get(get_message_thread))
+		.route("/message/{id}", get(get_message).delete(delete_message))
+		.route("/message", post(create_message))
+		.route("/ws", get(ws_handler))
 		.route_layer(middleware::from_fn(auth_middleware));
 
-	let app = public
+	let api = public
 		.merge(authed)
 		.route_layer(middleware::from_fn(normalize_rejections))
+		.fallback(api_not_found);
+
+	let app = Router::new()
+		.nest("/api", api)
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
 			proxy(uri, app_host, app_port, headers)
 		}))
@@ -91,6 +96,10 @@ async fn main() -> Result<()> {
 	axum::serve(listener, app).await?;
 
 	Ok(())
+}
+
+async fn api_not_found() -> ServiceError {
+	ServiceError::NotFound("API route not found".into())
 }
 
 async fn proxy(
