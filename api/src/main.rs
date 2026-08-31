@@ -13,7 +13,7 @@ use axum::{
 	http::{HeaderMap, StatusCode, Uri},
 	middleware,
 	response::Response,
-	routing::{get, post},
+	routing::{any, get, post},
 };
 use dotenvy::dotenv;
 use error::ServiceError;
@@ -86,6 +86,7 @@ async fn main() -> Result<()> {
 
 	let app = Router::new()
 		.nest("/api", api)
+		.route("/api/", any(api_not_found))
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
 			proxy(uri, app_host, app_port, headers)
 		}))
