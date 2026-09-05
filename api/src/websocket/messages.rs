@@ -44,7 +44,7 @@ impl WsModule for MessagesModule {
 				let thread_id = service::require_thread(&ctx.conn, thread_id).await?.id;
 
 				let payload = UserTypingPayload {
-					username: ctx.username.clone(),
+					username: ctx.auth.username.clone(),
 					thread_id,
 				};
 
@@ -59,7 +59,7 @@ impl WsModule for MessagesModule {
 				let thread_id = service::validate_thread_id(thread_id)?;
 
 				let payload = UserStoppedTypingPayload {
-					username: ctx.username.clone(),
+					username: ctx.auth.username.clone(),
 					thread_id,
 				};
 
@@ -72,7 +72,7 @@ impl WsModule for MessagesModule {
 			"create_message" => {
 				let input = payload.get::<CreateMessageInput>()?;
 				let created =
-					service::create_message(&ctx.conn, ctx.username.clone(), input).await?;
+					service::create_message(&ctx.conn, ctx.auth.username.clone(), input).await?;
 
 				ctx.state
 					.broadcast(self.name(), "message_created", &created)
@@ -82,7 +82,8 @@ impl WsModule for MessagesModule {
 
 			"delete_message" => {
 				let payload = payload.get::<DeleteMessagePayload>()?;
-				let deleted = service::delete_message(&ctx.conn, &ctx.username, payload.id).await?;
+				let deleted =
+					service::delete_message(&ctx.conn, &ctx.auth.username, payload.id).await?;
 
 				ctx.state
 					.broadcast(self.name(), "message_deleted", &deleted)
@@ -101,7 +102,7 @@ impl WsModule for MessagesModule {
 	fn should_deliver(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> bool {
 		match r#type {
 			"user_typing" | "user_stopped_typing" => match payload.get::<UserTypingPayload>() {
-				Ok(p) => p.username != ctx.username,
+				Ok(p) => p.username != ctx.auth.username,
 				Err(_) => false,
 			},
 			_ => true,

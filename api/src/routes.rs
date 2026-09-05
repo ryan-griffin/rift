@@ -1,20 +1,25 @@
 use crate::AppState;
-use crate::auth::{AuthResponse, Credentials, generate_token};
+use crate::auth::{AuthSession, Credentials};
 use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
 use crate::error::ServiceError;
-use crate::service::{self, CreateDirectoryInput, CreateMessageInput, SignupInput};
+use crate::service::{self, AuthResponse, CreateDirectoryInput, CreateMessageInput, SignupInput};
 use crate::websocket::handle_socket;
 use axum::{
 	Extension, Json,
 	body::{Body, to_bytes},
-	extract::{Path, Request, State, WebSocketUpgrade},
-	http::{HeaderMap, StatusCode, header::CONTENT_TYPE},
+	extract::{Path, Query, Request, State, WebSocketUpgrade},
+	http::{
+		HeaderMap, StatusCode,
+		header::{CONTENT_TYPE, UPGRADE},
+	},
 	middleware::Next,
 	response::{IntoResponse, Response},
 };
+use sea_orm::DatabaseConnection;
 use serde_json::json;
+use std::collections::HashMap;
 
 /// Refuse to buffer more than this much of a rejection body; axum's own
 /// rejection texts are short.
@@ -93,6 +98,50 @@ pub async fn normalize_rejections(request: Request, next: Next) -> Response {
 	(parts.status, Json(json!({ "error": message }))).into_response()
 }
 
+fn extract_token_from_header(headers: &HeaderMap) -> Option<String> {
+	let value = headers.get("Authorization")?.to_str().ok()?;
+	let (scheme, token) = value.split_once(' ')?;
+	let token = token.trim();
+	(scheme.eq_ignore_ascii_case("Bearer") && !token.is_empty()).then(|| token.to_owned())
+}
+
+fn extract_token_from_query(query: &HashMap<String, String>) -> Option<String> {
+	query.get("token").cloned()
+}
+
+/// Transport boundary for session auth: pull the bearer token off the
+/// request, resolve it through the service layer, and stash the session
+/// for handlers. Query tokens are accepted only for WebSocket upgrades,
+/// keeping secrets out of logs and caches on plain REST calls.
+pub async fn auth_middleware(
+	State(db): State<DatabaseConnection>,
+	headers: HeaderMap,
+	Query(query): Query<HashMap<String, String>>,
+	mut request: Request,
+	next: Next,
+) -> Result<Response, ServiceError> {
+	let path = request.uri().path();
+	let is_websocket_route = path == "/api/ws";
+	let is_websocket_upgrade = headers
+		.get(UPGRADE)
+		.and_then(|value| value.to_str().ok())
+		.is_some_and(|value| value.eq_ignore_ascii_case("websocket"));
+	let query_token = (is_websocket_route && is_websocket_upgrade)
+		.then(|| extract_token_from_query(&query))
+		.flatten();
+	let token = extract_token_from_header(&headers)
+		.or(query_token)
+		.ok_or(ServiceError::Unauthorized)?;
+
+	let session = service::authenticate_token(&db, &token)
+		.await?
+		.ok_or(ServiceError::Unauthorized)?;
+
+	request.extensions_mut().insert(session);
+
+	Ok(next.run(request).await)
+}
+
 pub async fn get_users(State(app_state): State<AppState>) -> Result<Json<Vec<User>>, ServiceError> {
 	Ok(Json(service::get_users(&app_state.conn).await?))
 }
@@ -106,10 +155,13 @@ pub async fn get_user(
 
 pub async fn delete_user(
 	State(app_state): State<AppState>,
-	Extension(username): Extension<String>,
+	Extension(session): Extension<AuthSession>,
 	Path(path_username): Path<String>,
 ) -> Result<Json<User>, ServiceError> {
-	let deleted_user = service::delete_user(&app_state.conn, &username, path_username).await?;
+	let deleted_user =
+		service::delete_user(&app_state.conn, &session.username, path_username).await?;
+
+	app_state.ws_state.invalidate_user(&session.username);
 
 	app_state
 		.ws_state
@@ -172,10 +224,10 @@ pub async fn get_message(
 
 pub async fn create_message(
 	State(app_state): State<AppState>,
-	Extension(username): Extension<String>,
+	Extension(session): Extension<AuthSession>,
 	Json(input): Json<CreateMessageInput>,
 ) -> Result<Json<Message>, ServiceError> {
-	let created_message = service::create_message(&app_state.conn, username, input).await?;
+	let created_message = service::create_message(&app_state.conn, session.username, input).await?;
 
 	app_state
 		.ws_state
@@ -187,10 +239,10 @@ pub async fn create_message(
 
 pub async fn delete_message(
 	State(app_state): State<AppState>,
-	Extension(username): Extension<String>,
+	Extension(session): Extension<AuthSession>,
 	Path(id): Path<i32>,
 ) -> Result<Json<Message>, ServiceError> {
-	let deleted_message = service::delete_message(&app_state.conn, &username, id).await?;
+	let deleted_message = service::delete_message(&app_state.conn, &session.username, id).await?;
 
 	app_state
 		.ws_state
@@ -204,39 +256,53 @@ pub async fn signup(
 	State(app_state): State<AppState>,
 	Json(input): Json<SignupInput>,
 ) -> Result<Json<AuthResponse>, ServiceError> {
-	let created_user = service::create_user(&app_state.conn, input).await?;
+	let auth = service::signup(&app_state.conn, input).await?;
 
 	app_state
 		.ws_state
-		.broadcast("users", "user_created", &created_user)
+		.broadcast("users", "user_created", &auth.user)
 		.await?;
 
-	let token = generate_token(&created_user.username)?;
-
-	Ok(Json(AuthResponse {
-		user: created_user,
-		token,
-	}))
+	Ok(Json(auth))
 }
 
 pub async fn login(
 	State(app_state): State<AppState>,
 	Json(credentials): Json<Credentials>,
 ) -> Result<Json<AuthResponse>, ServiceError> {
-	let user = service::login(&app_state.conn, credentials).await?;
-	let token = generate_token(&user.username)?;
+	let auth = service::login(&app_state.conn, credentials).await?;
 
-	Ok(Json(AuthResponse { user, token }))
+	Ok(Json(auth))
+}
+
+pub async fn logout(
+	State(app_state): State<AppState>,
+	Extension(session): Extension<AuthSession>,
+) -> Result<StatusCode, ServiceError> {
+	service::revoke_session(&app_state.conn, &session.token_hash).await?;
+	app_state
+		.ws_state
+		.invalidate_session(&session.username, &session.token_hash);
+	Ok(StatusCode::NO_CONTENT)
+}
+
+pub async fn logout_all(
+	State(app_state): State<AppState>,
+	Extension(session): Extension<AuthSession>,
+) -> Result<StatusCode, ServiceError> {
+	service::revoke_user_sessions(&app_state.conn, &session.username).await?;
+	app_state.ws_state.invalidate_user(&session.username);
+	Ok(StatusCode::NO_CONTENT)
 }
 
 pub async fn ws_handler(
 	ws: WebSocketUpgrade,
 	State(app_state): State<AppState>,
-	Extension(username): Extension<String>,
+	Extension(session): Extension<AuthSession>,
 ) -> Response {
 	ws.max_message_size(WS_INPUT_LIMIT)
 		.max_frame_size(WS_INPUT_LIMIT)
 		.on_upgrade(move |socket| {
-			handle_socket(socket, app_state.conn, app_state.ws_state, username)
+			handle_socket(socket, app_state.conn, app_state.ws_state, session)
 		})
 }

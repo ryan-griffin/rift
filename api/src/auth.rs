@@ -1,23 +1,19 @@
-use crate::db;
-use crate::entity;
-use anyhow::{Context, Error, Result};
-use axum::{
-	extract::{Query, Request},
-	http::{HeaderMap, StatusCode},
-	middleware::Next,
-	response::Response,
-};
+use anyhow::{Context, Result};
 use bcrypt::BcryptError;
-use entity::users::Model as User;
-use jsonwebtoken::{DecodingKey, EncodingKey, Header, Validation, decode, encode};
-use sea_orm::DatabaseConnection;
-use serde::{Deserialize, Serialize};
-use std::{collections::HashMap, env};
+use chrono::{DateTime, FixedOffset, Utc};
+use serde::Deserialize;
+use sha2::{Digest, Sha256};
+use std::fmt::Write;
 
-#[derive(Serialize, Deserialize)]
-struct Claims {
-	pub sub: String, // username
-	pub exp: usize,  // expiration time
+const TOKEN_BYTES: usize = 32;
+const TOKEN_LENGTH: usize = TOKEN_BYTES * 2;
+const SESSION_LIFETIME_DAYS: i64 = 30;
+
+#[derive(Clone, Debug)]
+pub struct AuthSession {
+	pub username: String,
+	pub token_hash: String,
+	pub expires_at: DateTime<FixedOffset>,
 }
 
 #[derive(Deserialize)]
@@ -25,12 +21,6 @@ struct Claims {
 pub struct Credentials {
 	pub username: String,
 	pub password: String,
-}
-
-#[derive(Serialize)]
-pub struct AuthResponse {
-	pub user: User,
-	pub token: String,
 }
 
 /// Why a password failed validation; transport mapping happens in callers.
@@ -56,93 +46,41 @@ pub fn hash_password(password: &str) -> Result<String, BcryptError> {
 	bcrypt::hash(password, bcrypt::DEFAULT_COST)
 }
 
-fn verify_password(password: &str, hash: &str) -> Result<bool, BcryptError> {
+pub fn verify_password(password: &str, hash: &str) -> Result<bool, BcryptError> {
 	bcrypt::verify(password, hash)
 }
 
-pub fn generate_token(username: &str) -> Result<String> {
-	let jwt_secret = env::var("JWT_SECRET").context("JWT_SECRET must be set")?;
-
-	let expiration = chrono::Utc::now()
-		.checked_add_signed(chrono::Duration::days(30))
-		.context("Failed to calculate expiration time")?
-		.timestamp() as usize;
-
-	let claims = Claims {
-		sub: username.to_string(),
-		exp: expiration,
-	};
-
-	let token = encode(
-		&Header::default(),
-		&claims,
-		&EncodingKey::from_secret(jwt_secret.as_ref()),
-	)?;
-	Ok(token)
-}
-
-fn validate_token(token: &str) -> Result<Claims> {
-	let jwt_secret = env::var("JWT_SECRET").context("JWT_SECRET must be set")?;
-
-	let token_data = decode(
-		token,
-		&DecodingKey::from_secret(jwt_secret.as_ref()),
-		&Validation::default(),
-	)?;
-
-	Ok(token_data.claims)
-}
-
-fn extract_token_from_header(headers: &HeaderMap) -> Option<String> {
-	headers
-		.get("Authorization")?
-		.to_str()
-		.ok()?
-		.strip_prefix("Bearer ")
-		.map(|token| token.to_string())
-}
-
-fn extract_token_from_query(query: &HashMap<String, String>) -> Option<String> {
-	query.get("token").cloned()
-}
-
-pub async fn authenticate_user(
-	db: &DatabaseConnection,
-	credentials: &Credentials,
-) -> Result<Option<User>> {
-	match db::find_user_by_username(db, &credentials.username).await {
-		Ok(Some(user)) => {
-			// Deleted accounts authenticate as failures, same as a wrong
-			// password: the wiped hash can never match anyway, but this
-			// makes the policy explicit rather than incidental.
-			if user.deleted_at.is_some() {
-				return Ok(None);
-			}
-			match verify_password(&credentials.password, &user.password) {
-				Ok(true) => Ok(Some(user)),
-				Ok(false) => Ok(None),
-				Err(err) => Err(Error::from(err)),
-			}
-		}
-		Ok(None) => Ok(None),
-		Err(err) => Err(Error::from(err)),
+fn encode_hex(bytes: &[u8]) -> String {
+	let mut encoded = String::with_capacity(bytes.len() * 2);
+	for byte in bytes {
+		write!(&mut encoded, "{byte:02x}").expect("writing to a String cannot fail");
 	}
+	encoded
 }
 
-pub async fn auth_middleware(
-	headers: HeaderMap,
-	Query(query): Query<HashMap<String, String>>,
-	mut request: Request,
-	next: Next,
-) -> Result<Response, StatusCode> {
-	let token = extract_token_from_header(&headers)
-		.or_else(|| extract_token_from_query(&query))
-		.ok_or(StatusCode::UNAUTHORIZED)?;
+pub fn hash_token(token: &str) -> String {
+	encode_hex(&Sha256::digest(token.as_bytes()))
+}
 
-	let claims = validate_token(&token).map_err(|_| StatusCode::UNAUTHORIZED)?;
+pub fn has_valid_token_shape(token: &str) -> bool {
+	token.len() == TOKEN_LENGTH
+		&& token
+			.bytes()
+			.all(|byte| byte.is_ascii_digit() || (b'a'..=b'f').contains(&byte))
+}
 
-	// Add the username to request extensions so handlers can access it
-	request.extensions_mut().insert(claims.sub);
+/// A fresh opaque session token: 256 bits of randomness, hex encoded.
+/// Storage and expiry live in the service layer; this is just the secret.
+pub fn generate_token() -> Result<String> {
+	let mut token_bytes = [0_u8; TOKEN_BYTES];
+	getrandom::fill(&mut token_bytes)
+		.map_err(|err| anyhow::anyhow!("Failed to generate an authentication token: {err}"))?;
+	Ok(encode_hex(&token_bytes))
+}
 
-	Ok(next.run(request).await)
+pub fn session_expires_at() -> Result<DateTime<FixedOffset>> {
+	Ok(Utc::now()
+		.checked_add_signed(chrono::Duration::days(SESSION_LIFETIME_DAYS))
+		.context("Failed to calculate session expiration time")?
+		.into())
 }

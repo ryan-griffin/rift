@@ -29,8 +29,13 @@ interface AuthState {
 interface AuthContextType extends AuthState {
 	login: (credentials: LoginCredentials) => Promise<boolean>;
 	signup: (credentials: SignUpCredentials) => Promise<boolean>;
-	logout: () => void;
+	logout: () => Promise<boolean>;
+	logoutAll: () => Promise<boolean>;
+	clearAuth: () => void;
 }
+
+const LOGOUT_ATTEMPTS = 2;
+const LOGOUT_TIMEOUT_MS = 3000;
 
 const AuthContext = createContext<AuthContextType>();
 
@@ -74,10 +79,56 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		}
 	};
 
-	const logout = () => {
+	const clearAuth = () => {
 		setState({ token: null, user: null });
 		deleteStorageItem("auth");
 	};
+
+	const revoke = async (endpoint: "logout" | "logout-all") => {
+		const token = state().token;
+		const address = resolveAddress();
+
+		// Remove the local credential immediately, but retain this in-memory
+		// copy long enough to retry server-side revocation.
+		clearAuth();
+
+		// Without a token there is nothing to revoke, and without an
+		// address there is no server to revoke with: local logout is
+		// the whole story either way.
+		if (!token || !address) return true;
+
+		for (let attempt = 0; attempt < LOGOUT_ATTEMPTS; attempt += 1) {
+			const controller = new AbortController();
+			const timeout = setTimeout(
+				() => controller.abort(),
+				LOGOUT_TIMEOUT_MS,
+			);
+
+			try {
+				const response = await fetch(
+					`http://${address}/api/${endpoint}`,
+					{
+						method: "POST",
+						headers: { Authorization: `Bearer ${token}` },
+						keepalive: true,
+						signal: controller.signal,
+					},
+				);
+
+				if (response.ok || response.status === 401) return true;
+				if (response.status < 500) return false;
+			} catch {
+				// Retry network failures and timeouts while the token remains in memory.
+			} finally {
+				clearTimeout(timeout);
+			}
+		}
+
+		return false;
+	};
+
+	const logout = () => revoke("logout");
+	const logoutAll = () => revoke("logout-all");
 
 	const contextValue: AuthContextType = {
 		get token() {
@@ -89,6 +140,8 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		login: (credentials) => authenticate("login", credentials),
 		signup: (credentials) => authenticate("signup", credentials),
 		logout,
+		logoutAll,
+		clearAuth,
 	};
 
 	return (

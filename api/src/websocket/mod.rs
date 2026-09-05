@@ -2,9 +2,12 @@ mod directory;
 mod messages;
 mod users;
 
+use crate::auth::AuthSession;
 use crate::error::ServiceError;
+use crate::service;
 use anyhow::{Result, anyhow};
 use axum::extract::ws::{CloseFrame, Message as WsMessage, WebSocket, close_code};
+use chrono::Utc;
 use futures_util::{
 	SinkExt, StreamExt,
 	stream::{SplitSink, SplitStream},
@@ -15,6 +18,7 @@ use serde_json::Value;
 use std::{
 	collections::HashMap,
 	sync::{Arc, LazyLock},
+	time::Duration,
 };
 use tokio::sync::{
 	Mutex, broadcast,
@@ -29,6 +33,11 @@ static MODULE_LIST: LazyLock<Vec<&'static dyn WsModule>> = LazyLock::new(|| {
 		&users::UsersModule,
 	]
 });
+const CLOSE_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(1);
+// Bound normal outbound writes so a client that stops reading cannot hold
+// the connection task inside `send` while revocation or expiry is pending.
+const SEND_TIMEOUT: Duration = Duration::from_secs(5);
+const AUTH_INVALID_CLOSE_CODE: u16 = 4001;
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WsPayload(Value);
@@ -73,7 +82,7 @@ impl WsEnvelope {
 pub struct WsContext {
 	conn: DatabaseConnection,
 	state: WsState,
-	username: String,
+	auth: AuthSession,
 }
 
 /// Socket-side rendering of the transport-agnostic [`ServiceError`]: `Client`
@@ -135,20 +144,66 @@ pub trait WsModule: Send + Sync + 'static {
 #[derive(Clone)]
 pub struct WsState {
 	tx: Sender<WsEnvelope>,
+	auth_tx: Sender<AuthInvalidation>,
 	modules: Arc<HashMap<&'static str, &'static dyn WsModule>>,
+}
+
+#[derive(Clone, Debug)]
+enum AuthInvalidation {
+	Session {
+		username: String,
+		token_hash: String,
+	},
+	User {
+		username: String,
+	},
+}
+
+impl AuthInvalidation {
+	fn applies_to(&self, session: &AuthSession) -> bool {
+		match self {
+			Self::Session {
+				username,
+				token_hash,
+			} => username == &session.username && token_hash == &session.token_hash,
+			Self::User { username } => username == &session.username,
+		}
+	}
 }
 
 impl WsState {
 	pub fn new(capacity: usize) -> Self {
 		let (tx, _) = broadcast::channel::<WsEnvelope>(capacity);
+		let (auth_tx, _) = broadcast::channel::<AuthInvalidation>(capacity);
 
 		let modules = Arc::new(MODULE_LIST.iter().map(|m| (m.name(), *m)).collect());
 
-		Self { tx, modules }
+		Self {
+			tx,
+			auth_tx,
+			modules,
+		}
 	}
 
 	fn subscribe(&self) -> Receiver<WsEnvelope> {
 		self.tx.subscribe()
+	}
+
+	fn subscribe_auth(&self) -> Receiver<AuthInvalidation> {
+		self.auth_tx.subscribe()
+	}
+
+	pub fn invalidate_session(&self, username: &str, token_hash: &str) {
+		let _ = self.auth_tx.send(AuthInvalidation::Session {
+			username: username.to_owned(),
+			token_hash: token_hash.to_owned(),
+		});
+	}
+
+	pub fn invalidate_user(&self, username: &str) {
+		let _ = self.auth_tx.send(AuthInvalidation::User {
+			username: username.to_owned(),
+		});
 	}
 
 	async fn receive(rx: &mut Receiver<WsEnvelope>) -> Option<WsEnvelope> {
@@ -218,8 +273,13 @@ async fn send_msg_to_client(
 	env: &WsEnvelope,
 ) -> Result<()> {
 	let json = serde_json::to_string(env)?;
-	let mut sender_guard = sender.lock().await;
-	sender_guard.send(WsMessage::Text(json.into())).await?;
+	let send = async {
+		let mut sender_guard = sender.lock().await;
+		sender_guard.send(WsMessage::Text(json.into())).await
+	};
+	tokio::time::timeout(SEND_TIMEOUT, send)
+		.await
+		.map_err(|_| anyhow!("Timed out sending WebSocket message"))??;
 	Ok(())
 }
 
@@ -231,25 +291,139 @@ async fn send_error_to_client(
 	send_msg_to_client(sender, &env).await
 }
 
+async fn close_socket(
+	sender: &Arc<Mutex<SplitSink<WebSocket, WsMessage>>>,
+	receiver: &mut SplitStream<WebSocket>,
+	code: u16,
+	reason: &'static str,
+) {
+	let frame = CloseFrame {
+		code,
+		reason: reason.into(),
+	};
+	let send_close = async {
+		let mut sender = sender.lock().await;
+		sender.send(WsMessage::Close(Some(frame))).await
+	};
+	match tokio::time::timeout(CLOSE_HANDSHAKE_TIMEOUT, send_close).await {
+		Ok(Ok(())) => {}
+		Ok(Err(err)) => {
+			eprintln!("Failed to close WebSocket: {err}");
+			return;
+		}
+		Err(err) => {
+			eprintln!("Failed to close WebSocket: {err}");
+			return;
+		}
+	}
+
+	let wait_for_acknowledgement = async {
+		while let Some(message) = receiver.next().await {
+			if matches!(message, Ok(WsMessage::Close(_)) | Err(_)) {
+				break;
+			}
+		}
+	};
+	let _ = tokio::time::timeout(CLOSE_HANDSHAKE_TIMEOUT, wait_for_acknowledgement).await;
+}
+
 pub async fn handle_socket(
 	socket: WebSocket,
 	conn: DatabaseConnection,
 	state: WsState,
-	username: String,
+	session: AuthSession,
 ) {
 	let (sender, mut receiver) = socket.split();
 	let sender = Arc::new(Mutex::new(sender));
 
 	let mut rx = state.subscribe();
+	let mut auth_rx = state.subscribe_auth();
+
+	match service::is_session_active(&conn, &session).await {
+		Ok(true) => {}
+		Ok(false) => {
+			close_socket(
+				&sender,
+				&mut receiver,
+				AUTH_INVALID_CLOSE_CODE,
+				"Authentication is no longer valid",
+			)
+			.await;
+			return;
+		}
+		Err(err) => {
+			eprintln!("Failed to validate WebSocket authentication: {err:?}");
+			close_socket(
+				&sender,
+				&mut receiver,
+				close_code::ERROR,
+				"Unable to validate authentication",
+			)
+			.await;
+			return;
+		}
+	}
 
 	let ctx = WsContext {
 		conn,
 		state: state.clone(),
-		username,
+		auth: session,
 	};
+	let until_expiration = (ctx.auth.expires_at.with_timezone(&Utc) - Utc::now())
+		.to_std()
+		.unwrap_or_default();
+	let expiration = tokio::time::sleep(until_expiration);
+	tokio::pin!(expiration);
 
 	loop {
 		tokio::select! {
+			biased;
+
+			auth_event = auth_rx.recv() => {
+				match auth_event {
+					Ok(event) if event.applies_to(&ctx.auth) => {
+						close_socket(
+							&sender,
+							&mut receiver,
+							AUTH_INVALID_CLOSE_CODE,
+							"Authentication revoked",
+						).await;
+						break;
+					}
+					Ok(_) => {}
+					// A lagged receiver may have missed a revocation, so
+					// treat it as revoked and let the client clear auth.
+					Err(broadcast::error::RecvError::Lagged(_)) => {
+						close_socket(
+							&sender,
+							&mut receiver,
+							AUTH_INVALID_CLOSE_CODE,
+							"Authentication state changed",
+						).await;
+						break;
+					}
+					Err(broadcast::error::RecvError::Closed) => {
+						close_socket(
+							&sender,
+							&mut receiver,
+							close_code::ERROR,
+							"Authentication service unavailable",
+						).await;
+						break;
+					}
+				}
+			}
+
+			_ = &mut expiration => {
+				close_socket(
+					&sender,
+					&mut receiver,
+					AUTH_INVALID_CLOSE_CODE,
+					"Authentication expired",
+				).await;
+				break;
+			}
+
 			msg = receive_msg_from_client(&mut receiver) => {
 				match msg {
 					ClientEvent::Message(env) => {
@@ -284,20 +458,32 @@ pub async fn handle_socket(
 						}
 					},
 					ClientEvent::MessageTooLarge => {
-						let frame = CloseFrame {
-							code: close_code::SIZE,
-							reason: "Message exceeds the 64 KiB limit".into(),
-						};
-						let mut sender = sender.lock().await;
-						if let Err(err) = sender.send(WsMessage::Close(Some(frame))).await {
-							eprintln!("Failed to close oversized WebSocket message: {err}");
-						}
+						close_socket(
+							&sender,
+							&mut receiver,
+							close_code::SIZE,
+							"Message exceeds the 64 KiB limit",
+						).await;
 						break;
 					},
 					ClientEvent::PeerClose => {
-						let mut sender = sender.lock().await;
-						if let Err(err) = sender.close().await {
-							eprintln!("Failed to acknowledge WebSocket close: {err}");
+						let acknowledge = async {
+							let mut sender = sender.lock().await;
+							sender.close().await
+						};
+						match tokio::time::timeout(
+							CLOSE_HANDSHAKE_TIMEOUT,
+							acknowledge,
+						)
+						.await
+						{
+							Ok(Ok(())) => {}
+							Ok(Err(err)) => {
+								eprintln!("Failed to acknowledge WebSocket close: {err}");
+							}
+							Err(err) => {
+								eprintln!("Failed to acknowledge WebSocket close: {err}");
+							}
 						}
 						break;
 					},

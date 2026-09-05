@@ -1,13 +1,18 @@
 use crate::auth::{
-	Credentials, PasswordError, authenticate_user, hash_password, validate_password,
+	AuthSession, Credentials, PasswordError, generate_token, has_valid_token_shape, hash_password,
+	hash_token, session_expires_at, validate_password, verify_password,
 };
 use crate::db;
 use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
 use crate::error::ServiceError;
-use sea_orm::{AccessMode, ConnectionTrait, DatabaseConnection, IsolationLevel, TransactionTrait};
-use serde::Deserialize;
+use anyhow::Error;
+use sea_orm::{
+	AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, IsolationLevel,
+	TransactionTrait,
+};
+use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Deserialize)]
 #[serde(deny_unknown_fields)]
@@ -105,36 +110,242 @@ pub async fn get_user(db: &DatabaseConnection, username: String) -> Result<User,
 	require_user(db, &username).await
 }
 
-pub async fn create_user(
-	db: &DatabaseConnection,
-	input: SignupInput,
-) -> Result<User, ServiceError> {
-	let mut input = input.validate()?;
+/// What a successful signup or login hands back: the user row plus the
+/// single copy of the raw session token in existence.
+#[derive(Serialize)]
+pub struct AuthResponse {
+	pub user: User,
+	pub token: String,
+}
+
+struct PreparedSignup {
+	username: String,
+	name: String,
+	password_hash: String,
+}
+
+async fn prepare_signup(input: SignupInput) -> Result<PreparedSignup, ServiceError> {
+	let input = input.validate()?;
 	validate_password(&input.password).map_err(|err| match err {
 		PasswordError::Empty => ServiceError::BadRequest("password must not be empty".into()),
 		PasswordError::TooLong => {
 			ServiceError::BadRequest("password must be at most 72 bytes".into())
 		}
 	})?;
-	input.password =
-		hash_password(&input.password).map_err(|err| ServiceError::Internal(err.into()))?;
 
-	Ok(db::insert_user(db, input.username, input.name, input.password).await?)
+	let SignupInput {
+		username,
+		name,
+		password,
+	} = input;
+	let password_hash = tokio::task::spawn_blocking(move || hash_password(&password))
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(Error::from(err).context("Password hashing task failed"))
+		})?
+		.map_err(|err| {
+			ServiceError::Internal(Error::from(err).context("Failed to hash password"))
+		})?;
+
+	Ok(PreparedSignup {
+		username,
+		name,
+		password_hash,
+	})
+}
+
+pub async fn authenticate_user(
+	db: &impl ConnectionTrait,
+	credentials: &Credentials,
+) -> Result<Option<User>, ServiceError> {
+	let Some(user) = db::find_user_by_username(db, &credentials.username)
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(
+				Error::from(err).context("Failed to find user for authentication"),
+			)
+		})?
+	else {
+		return Ok(None);
+	};
+
+	// Deleted accounts authenticate as failures, same as a wrong
+	// password: the wiped hash can never match anyway, but this
+	// makes the policy explicit rather than incidental.
+	if user.deleted_at.is_some() {
+		return Ok(None);
+	}
+
+	let password = credentials.password.clone();
+	let password_hash = user.password.clone();
+	let matches = tokio::task::spawn_blocking(move || verify_password(&password, &password_hash))
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(Error::from(err).context("Password verification task failed"))
+		})?
+		.map_err(|err| {
+			ServiceError::Internal(Error::from(err).context("Failed to verify password"))
+		})?;
+
+	Ok(matches.then_some(user))
+}
+
+/// Resolve a bearer token to its session. Malformed tokens short-circuit
+/// before the database; unknown, expired, or tombstoned sessions resolve
+/// to `None` so callers answer `Unauthorized` without distinguishing why.
+pub async fn authenticate_token(
+	db: &impl ConnectionTrait,
+	token: &str,
+) -> Result<Option<AuthSession>, ServiceError> {
+	// Trim here rather than at each call site so header and query tokens
+	// get the same treatment before shape validation.
+	let token = token.trim();
+	if !has_valid_token_shape(token) {
+		return Ok(None);
+	}
+
+	Ok(db::find_active_auth_session(db, &hash_token(token))
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(
+				Error::from(err).context("Failed to look up authentication session"),
+			)
+		})?
+		.map(|session| AuthSession {
+			username: session.username,
+			token_hash: session.token_hash,
+			expires_at: session.expires_at,
+		}))
+}
+
+pub async fn is_session_active(
+	db: &impl ConnectionTrait,
+	session: &AuthSession,
+) -> Result<bool, ServiceError> {
+	Ok(db::find_active_auth_session(db, &session.token_hash)
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(
+				Error::from(err).context("Failed to revalidate authentication session"),
+			)
+		})?
+		.is_some_and(|active| active.username == session.username))
+}
+
+/// Mint a session row for `username` and return the raw token. Only the
+/// hash is stored, so this is the single point where the secret exists.
+pub async fn issue_token(
+	db: &impl ConnectionTrait,
+	username: &str,
+) -> Result<String, ServiceError> {
+	let token = generate_token().map_err(ServiceError::Internal)?;
+	let expires_at = session_expires_at().map_err(ServiceError::Internal)?;
+
+	db::insert_auth_session(db, hash_token(&token), username.to_owned(), expires_at)
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(
+				Error::from(err).context("Failed to store authentication session"),
+			)
+		})?;
+
+	Ok(token)
+}
+
+pub async fn cleanup_expired_auth_sessions(db: &DatabaseConnection) -> Result<u64, ServiceError> {
+	db::delete_expired_auth_sessions(db).await.map_err(|err| {
+		ServiceError::Internal(
+			Error::from(err).context("Failed to delete expired authentication sessions"),
+		)
+	})
+}
+
+pub async fn revoke_session(
+	db: &impl ConnectionTrait,
+	token_hash: &str,
+) -> Result<(), ServiceError> {
+	db::delete_auth_session(db, token_hash)
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(
+				Error::from(err).context("Failed to revoke authentication session"),
+			)
+		})?;
+	Ok(())
+}
+
+pub async fn revoke_user_sessions(
+	db: &impl ConnectionTrait,
+	username: &str,
+) -> Result<(), ServiceError> {
+	db::delete_auth_sessions_by_username(db, username)
+		.await
+		.map_err(|err| {
+			ServiceError::Internal(
+				Error::from(err).context("Failed to revoke user authentication sessions"),
+			)
+		})?;
+	Ok(())
+}
+
+/// Commit `result`'s transaction, or roll back and return the original
+/// error. Dropping the transaction would roll back silently; the explicit
+/// rollback only adds logging when rollback itself fails.
+async fn finish_transaction<T>(
+	txn: DatabaseTransaction,
+	result: Result<T, ServiceError>,
+	op: &str,
+) -> Result<T, ServiceError> {
+	match result {
+		Ok(value) => {
+			txn.commit().await?;
+			Ok(value)
+		}
+		Err(err) => {
+			if let Err(rollback_err) = txn.rollback().await {
+				eprintln!("Failed to roll back {op} transaction: {rollback_err:?}");
+			}
+			Err(err)
+		}
+	}
+}
+
+pub async fn signup(
+	db: &DatabaseConnection,
+	input: SignupInput,
+) -> Result<AuthResponse, ServiceError> {
+	let input = prepare_signup(input).await?;
+	let txn = db.begin().await?;
+	let result = async {
+		let created_user =
+			db::insert_user(&txn, input.username, input.name, input.password_hash).await?;
+		let token = issue_token(&txn, &created_user.username).await?;
+		Ok(AuthResponse {
+			user: created_user,
+			token,
+		})
+	}
+	.await;
+
+	finish_transaction(txn, result, "signup").await
 }
 
 pub async fn login(
 	db: &DatabaseConnection,
 	mut credentials: Credentials,
-) -> Result<User, ServiceError> {
+) -> Result<AuthResponse, ServiceError> {
 	// Keep credential failures opaque so login does not reveal which field
 	// was invalid or whether the account exists.
 	credentials.username =
 		normalize_username(credentials.username).map_err(|_| ServiceError::Unauthorized)?;
 	validate_password(&credentials.password).map_err(|_| ServiceError::Unauthorized)?;
 
-	authenticate_user(db, &credentials)
+	let user = authenticate_user(db, &credentials)
 		.await?
-		.ok_or(ServiceError::Unauthorized)
+		.ok_or(ServiceError::Unauthorized)?;
+	let token = issue_token(db, &user.username).await?;
+
+	Ok(AuthResponse { user, token })
 }
 
 pub async fn delete_user(
@@ -149,21 +360,28 @@ pub async fn delete_user(
 		));
 	}
 
-	if let Some(user) = db::tombstone_user_by_username(db, authenticated_username).await? {
-		return Ok(user);
-	}
+	let txn = db.begin().await?;
+	let result = async {
+		if let Some(user) = db::tombstone_user_by_username(&txn, authenticated_username).await? {
+			revoke_user_sessions(&txn, authenticated_username).await?;
+			return Ok(user);
+		}
 
-	match db::find_user_by_username(db, authenticated_username).await? {
-		Some(user) if user.deleted_at.is_some() => Err(ServiceError::Gone(format!(
-			"User with username {authenticated_username} is already deleted"
-		))),
-		Some(_) => Err(ServiceError::Conflict(format!(
-			"User with username {authenticated_username} changed concurrently; retry the request"
-		))),
-		None => Err(ServiceError::NotFound(format!(
-			"User with username {authenticated_username} not found"
-		))),
+		match db::find_user_by_username(&txn, authenticated_username).await? {
+			Some(user) if user.deleted_at.is_some() => Err(ServiceError::Gone(format!(
+				"User with username {authenticated_username} is already deleted"
+			))),
+			Some(_) => Err(ServiceError::Conflict(format!(
+				"User with username {authenticated_username} changed concurrently; retry the request"
+			))),
+			None => Err(ServiceError::NotFound(format!(
+				"User with username {authenticated_username} not found"
+			))),
+		}
 	}
+	.await;
+
+	finish_transaction(txn, result, "delete user").await
 }
 
 pub async fn get_directory(
@@ -227,16 +445,7 @@ pub async fn get_message_thread(
 	}
 	.await;
 
-	match result {
-		Ok(messages) => {
-			txn.commit().await?;
-			Ok(messages)
-		}
-		Err(err) => {
-			txn.rollback().await?;
-			Err(err)
-		}
-	}
+	finish_transaction(txn, result, "get message thread").await
 }
 
 pub async fn get_message(db: &DatabaseConnection, id: i32) -> Result<Message, ServiceError> {
@@ -309,16 +518,7 @@ pub async fn create_message(
 	}
 	.await;
 
-	match result {
-		Ok(message) => {
-			txn.commit().await?;
-			Ok(message)
-		}
-		Err(err) => {
-			txn.rollback().await?;
-			Err(err)
-		}
-	}
+	finish_transaction(txn, result, "create message").await
 }
 
 pub async fn delete_message(
