@@ -4,7 +4,13 @@ import { useAuth } from "../components/Auth.tsx";
 import Button from "../components/Button.tsx";
 
 const Settings: Component = () => {
-	const { logout } = useAuth();
+	const { logout, logoutAll } = useAuth();
+
+	const handleLogout = async (revoke: () => Promise<boolean>) => {
+		if (!(await revoke())) {
+			alert("The server could not confirm logout. Please try again.");
+		}
+	};
 
 	return (
 		<>
@@ -17,7 +23,12 @@ const Settings: Component = () => {
 			<Button
 				variant="suggested"
 				text="Logout"
-				onClick={() => logout()}
+				onClick={() => void handleLogout(logout)}
+			/>
+			<Button
+				variant="suggested"
+				text="Logout all devices"
+				onClick={() => void handleLogout(logoutAll)}
 			/>
 		</>
 	);

@@ -29,7 +29,9 @@ interface AuthState {
 interface AuthContextType extends AuthState {
 	login: (credentials: LoginCredentials) => Promise<boolean>;
 	signup: (credentials: SignUpCredentials) => Promise<boolean>;
-	logout: () => void;
+	logout: () => Promise<boolean>;
+	logoutAll: () => Promise<boolean>;
+	clearAuth: () => void;
 }
 
 const AuthContext = createContext<AuthContextType>();
@@ -74,10 +76,43 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		}
 	};
 
-	const logout = () => {
+	const clearAuth = () => {
 		setState({ token: null, user: null });
 		deleteStorageItem("auth");
 	};
+
+	const revoke = async (endpoint: "logout" | "logout-all") => {
+		const token = state().token;
+		const address = resolveAddress();
+
+		if (!token) {
+			clearAuth();
+			return true;
+		}
+		if (!address) return false;
+
+		try {
+			const response = await fetch(`http://${address}/api/${endpoint}`, {
+				method: "POST",
+				headers: { Authorization: `Bearer ${token}` },
+				keepalive: true,
+			});
+
+			// A 401 confirms only that this token is invalid, not that other
+			// sessions were revoked by logout-all.
+			const revoked =
+				response.ok ||
+				(endpoint === "logout" && response.status === 401);
+			// A delayed response must not clear a newer login.
+			if (revoked && state().token === token) clearAuth();
+			return revoked;
+		} catch {
+			return false;
+		}
+	};
+
+	const logout = () => revoke("logout");
+	const logoutAll = () => revoke("logout-all");
 
 	const contextValue: AuthContextType = {
 		get token() {
@@ -89,6 +124,8 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		login: (credentials) => authenticate("login", credentials),
 		signup: (credentials) => authenticate("signup", credentials),
 		logout,
+		logoutAll,
+		clearAuth,
 	};
 
 	return (

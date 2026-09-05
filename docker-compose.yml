@@ -16,7 +16,6 @@ services:
         image: ghcr.io/ryan-griffin/rift/api:latest
         environment:
             DATABASE_URL: postgres://postgres@database
-            JWT_SECRET: ${JWT_SECRET}
             API_HOST: api
             API_PORT: 8080
             APP_HOST: app

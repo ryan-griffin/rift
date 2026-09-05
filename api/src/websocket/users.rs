@@ -30,9 +30,13 @@ impl WsModule for UsersModule {
 		match r#type {
 			"delete_user" => {
 				let payload = payload.get::<DeleteUserPayload>()?;
-				let deleted =
-					service::delete_user(&ctx.conn, &ctx.username, payload.username).await?;
-
+				let deleted = service::delete_user(
+					&ctx.conn,
+					&ctx.auth_events,
+					&ctx.auth.username,
+					payload.username,
+				)
+				.await?;
 				ctx.state
 					.broadcast(self.name(), "user_deleted", &deleted)
 					.await?;
@@ -50,7 +54,7 @@ impl WsModule for UsersModule {
 	fn should_deliver(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> bool {
 		match r#type {
 			"user_created" => match payload.get::<UserCreatedPayload>() {
-				Ok(p) => p.username != ctx.username,
+				Ok(p) => p.username != ctx.auth.username,
 				Err(_) => false,
 			},
 			_ => true,
