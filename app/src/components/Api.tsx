@@ -22,7 +22,7 @@ export const useApi = () => {
 };
 
 const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
-	const { token, logout } = useAuth();
+	const { token, clearAuth } = useAuth();
 	const queryClient = new QueryClient();
 
 	const api = async <T,>(
@@ -46,7 +46,7 @@ const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
 		}
 
 		const res = await fetch(`http://${address}/api${url}`, options);
-		if (res.status === 401) logout();
+		if (res.status === 401) clearAuth();
 
 		// Our API answers 4xx with { error } bodies; rethrow so queries
 		// land in error state instead of resolving with wrongly-shaped
