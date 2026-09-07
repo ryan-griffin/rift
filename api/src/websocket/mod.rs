@@ -227,7 +227,6 @@ async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> Clien
 			) {
 				ClientEvent::MessageTooLarge
 			} else {
-				eprintln!("WebSocket error: {err}");
 				ClientEvent::Disconnect
 			}
 		}
@@ -237,19 +236,28 @@ async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> Clien
 async fn send_msg_to_client(
 	sender: &mut SplitSink<WebSocket, WsMessage>,
 	env: &WsEnvelope,
-) -> Result<()> {
-	let json = serde_json::to_string(env)?;
-	tokio::time::timeout(SEND_TIMEOUT, sender.send(WsMessage::Text(json.into())))
-		.await
-		.map_err(|_| anyhow!("Timed out sending WebSocket message"))??;
-	Ok(())
+) -> bool {
+	let json = match serde_json::to_string(env) {
+		Ok(json) => json,
+		Err(err) => {
+			eprintln!("Failed to serialize WebSocket message: {err:?}");
+			return false;
+		}
+	};
+	matches!(
+		tokio::time::timeout(SEND_TIMEOUT, sender.send(WsMessage::Text(json.into()))).await,
+		Ok(Ok(()))
+	)
 }
 
-async fn send_error_to_client(
-	sender: &mut SplitSink<WebSocket, WsMessage>,
-	msg: &str,
-) -> Result<()> {
-	let env = WsEnvelope::new("system", "error", msg)?;
+async fn send_error_to_client(sender: &mut SplitSink<WebSocket, WsMessage>, msg: &str) -> bool {
+	let env = match WsEnvelope::new("system", "error", msg) {
+		Ok(env) => env,
+		Err(err) => {
+			eprintln!("Failed to build WebSocket error message: {err:?}");
+			return false;
+		}
+	};
 	send_msg_to_client(sender, &env).await
 }
 
@@ -270,12 +278,7 @@ async fn close_socket(
 	.await
 	{
 		Ok(Ok(())) => {}
-		Ok(Err(err)) => {
-			eprintln!("Failed to close WebSocket: {err}");
-			return;
-		}
-		Err(err) => {
-			eprintln!("Failed to close WebSocket: {err}");
+		Ok(Err(_)) | Err(_) => {
 			return;
 		}
 	}
@@ -340,15 +343,7 @@ async fn handle_client_event(
 			)));
 		}
 		ClientEvent::PeerClose => {
-			match tokio::time::timeout(CLOSE_HANDSHAKE_TIMEOUT, sender.close()).await {
-				Ok(Ok(())) => {}
-				Ok(Err(err)) => {
-					eprintln!("Failed to acknowledge WebSocket close: {err}");
-				}
-				Err(err) => {
-					eprintln!("Failed to acknowledge WebSocket close: {err}");
-				}
-			}
+			let _ = tokio::time::timeout(CLOSE_HANDSHAKE_TIMEOUT, sender.close()).await;
 			return ControlFlow::Break(None);
 		}
 		ClientEvent::Disconnect => return ControlFlow::Break(None),
@@ -363,8 +358,7 @@ async fn handle_client_event(
 				"Internal server error".to_string()
 			}
 		};
-		if let Err(err) = send_error_to_client(sender, &msg).await {
-			eprintln!("{err}");
+		if !send_error_to_client(sender, &msg).await {
 			return ControlFlow::Break(None);
 		}
 	}
@@ -418,8 +412,7 @@ async fn run_socket(
 				SocketIoEvent::Broadcast(env) => {
 					if let Some(env) = env && let Some(module) = ctx.state.modules.get(env.module.as_str()) {
 						let should_send = module.should_deliver(ctx, &env.r#type, &env.payload);
-						if should_send && let Err(err) = send_msg_to_client(sender, &env).await {
-							eprintln!("{err}");
+						if should_send && !send_msg_to_client(sender, &env).await {
 							return None;
 						}
 					}

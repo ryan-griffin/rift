@@ -207,7 +207,10 @@ async fn proxy(
 		Ok(response) => {
 			let status = response.status();
 			let response_headers = response.headers().clone();
-			let body = response.bytes().await.unwrap_or_default();
+			let body = response.bytes().await.map_err(|err| {
+				eprintln!("Proxy error reading upstream body for {proxy_url}: {err:?}");
+				StatusCode::BAD_GATEWAY
+			})?;
 
 			let mut builder = Response::builder().status(status.as_u16());
 
@@ -223,7 +226,7 @@ async fn proxy(
 			})?)
 		}
 		Err(err) => {
-			eprintln!("Proxy error for {}: {}", proxy_url, err);
+			eprintln!("Proxy error for {proxy_url}: {err:?}");
 			Err(StatusCode::BAD_GATEWAY)
 		}
 	}

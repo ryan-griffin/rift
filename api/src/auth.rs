@@ -129,8 +129,7 @@ pub fn has_valid_token_shape(token: &str) -> bool {
 /// Storage and expiry live in the service layer; this is just the secret.
 pub fn generate_token() -> Result<String> {
 	let mut token_bytes = [0_u8; TOKEN_BYTES];
-	getrandom::fill(&mut token_bytes)
-		.map_err(|err| anyhow::anyhow!("Failed to generate an authentication token: {err}"))?;
+	getrandom::fill(&mut token_bytes).context("Failed to generate an authentication token")?;
 	Ok(encode_hex(&token_bytes))
 }
 
