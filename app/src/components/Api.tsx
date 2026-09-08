@@ -22,7 +22,7 @@ export const useApi = () => {
 };
 
 const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
-	const { token, clearAuth } = useAuth();
+	const auth = useAuth();
 	const queryClient = new QueryClient();
 
 	const api = async <T,>(
@@ -33,11 +33,12 @@ const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
 		const address = resolveAddress();
 		if (!address) throw new Error("API address not found");
 
+		const requestToken = auth.token;
 		const options: RequestInit = {
 			method,
 			headers: {
 				"Content-Type": "application/json",
-				Authorization: `Bearer ${token}`,
+				Authorization: `Bearer ${requestToken}`,
 			},
 		};
 
@@ -46,7 +47,7 @@ const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
 		}
 
 		const res = await fetch(`http://${address}/api${url}`, options);
-		if (res.status === 401) clearAuth();
+		if (res.status === 401) auth.clearAuthIfCurrent(requestToken);
 
 		// Our API answers 4xx with { error } bodies; rethrow so queries
 		// land in error state instead of resolving with wrongly-shaped

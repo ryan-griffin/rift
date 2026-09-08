@@ -31,7 +31,7 @@ interface AuthContextType extends AuthState {
 	signup: (credentials: SignUpCredentials) => Promise<boolean>;
 	logout: () => Promise<boolean>;
 	logoutAll: () => Promise<boolean>;
-	clearAuth: () => void;
+	clearAuthIfCurrent: (token: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextType>();
@@ -81,6 +81,11 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		deleteStorageItem("auth");
 	};
 
+	const clearAuthIfCurrent = (token: string | null) => {
+		// Delayed responses and socket closures must not clear a newer login.
+		if (state().token === token) clearAuth();
+	};
+
 	const revoke = async (endpoint: "logout" | "logout-all") => {
 		const token = state().token;
 		const address = resolveAddress();
@@ -103,8 +108,7 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 			const revoked =
 				response.ok ||
 				(endpoint === "logout" && response.status === 401);
-			// A delayed response must not clear a newer login.
-			if (revoked && state().token === token) clearAuth();
+			if (revoked) clearAuthIfCurrent(token);
 			return revoked;
 		} catch {
 			return false;
@@ -125,7 +129,7 @@ const AuthProvider: Component<{ children: JSX.Element }> = (props) => {
 		signup: (credentials) => authenticate("signup", credentials),
 		logout,
 		logoutAll,
-		clearAuth,
+		clearAuthIfCurrent,
 	};
 
 	return (
