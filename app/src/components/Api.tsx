@@ -34,6 +34,7 @@ const ApiProvider: Component<{ children: JSX.Element }> = (props) => {
 		if (!address) throw new Error("API address not found");
 
 		const requestToken = auth.token;
+		if (!requestToken) throw new Error("Not authenticated");
 		const options: RequestInit = {
 			method,
 			headers: {
