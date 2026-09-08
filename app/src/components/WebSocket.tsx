@@ -45,12 +45,8 @@ const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
 
 		ws.onclose = (event) => {
 			if (socket() === ws) setSocket(null);
-			if (
-				!disposed &&
-				event.code === AUTH_INVALID_CLOSE_CODE &&
-				auth.token === connectionToken
-			) {
-				auth.clearAuth();
+			if (!disposed && event.code === AUTH_INVALID_CLOSE_CODE) {
+				auth.clearAuthIfCurrent(connectionToken);
 			}
 		};
 		ws.onerror = (error) => console.error("WebSocket error:", error);
