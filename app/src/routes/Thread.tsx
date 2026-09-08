@@ -381,11 +381,14 @@ const Thread: Component = () => {
 
 		stopTyping();
 
-		sendMessage({
-			module: "messages",
-			type: "create_message",
-			payload: newMessage,
-		});
+		if (
+			!sendMessage({
+				module: "messages",
+				type: "create_message",
+				payload: newMessage,
+			})
+		)
+			return;
 
 		setNewMessage({
 			content: "",
