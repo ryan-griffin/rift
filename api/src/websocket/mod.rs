@@ -385,13 +385,24 @@ async fn run_socket(
 
 			auth_event = auth_rx.recv() => {
 				match auth_event {
-					Ok(event) if event.applies_to(&ctx.auth) => {
+					Ok(event) if !event.applies_to(&ctx.auth) => continue,
+					Ok(AuthInvalidation::Session { .. }) => {
 						return Some((AUTH_INVALID_CLOSE_CODE, "Authentication revoked"));
 					}
-					Ok(_) => {}
-					// A lagged receiver may have missed a revocation; fail closed.
-					Err(broadcast::error::RecvError::Lagged(_)) => {
-						return Some((AUTH_INVALID_CLOSE_CODE, "Authentication state changed"));
+					Ok(AuthInvalidation::User { .. })
+					| Err(broadcast::error::RecvError::Lagged(_)) => {
+						// User-wide events can include a concurrent new login, and
+						// lag may hide a revocation. Resolve both against the database.
+						match service::is_session_active(&ctx.conn, &ctx.auth).await {
+							Ok(true) => continue,
+							Ok(false) => {
+								return Some((AUTH_INVALID_CLOSE_CODE, "Authentication is no longer valid"));
+							}
+							Err(err) => {
+								eprintln!("Failed to revalidate WebSocket authentication: {err:?}");
+								return Some((close_code::ERROR, "Unable to validate authentication"));
+							}
+						}
 					}
 					Err(broadcast::error::RecvError::Closed) => {
 						return Some((close_code::ERROR, "Authentication service unavailable"));
