@@ -1,11 +1,11 @@
 use crate::entity::{
-	directory, directory::Model as Directory, messages, messages::Model as Message, users,
-	users::Model as User,
+	auth_sessions, auth_sessions::Model as AuthSession, directory, directory::Model as Directory,
+	messages, messages::Model as Message, users, users::Model as User,
 };
 use chrono::Utc;
 use sea_orm::{
 	ActiveModelTrait, ColumnTrait, ConnectionTrait, DatabaseConnection, DatabaseTransaction, DbErr,
-	EntityTrait, QueryFilter, QueryOrder, QuerySelect, Set,
+	EntityTrait, QueryFilter, QueryOrder, QuerySelect, RelationTrait, Set,
 	sea_query::{
 		Alias, CommonTableExpression, Expr, JoinType, LockType, Query, SelectStatement, UnionType,
 		WithClause,
@@ -17,7 +17,7 @@ pub async fn list_users(db: &DatabaseConnection) -> Result<Vec<User>, DbErr> {
 }
 
 pub async fn find_user_by_username(
-	db: &DatabaseConnection,
+	db: &impl ConnectionTrait,
 	username: &str,
 ) -> Result<Option<User>, DbErr> {
 	users::Entity::find()
@@ -27,7 +27,7 @@ pub async fn find_user_by_username(
 }
 
 pub async fn insert_user(
-	db: &DatabaseConnection,
+	db: &impl ConnectionTrait,
 	username: String,
 	name: String,
 	password: String,
@@ -44,7 +44,7 @@ pub async fn insert_user(
 
 /// Tombstone a live user so their messages continue to resolve to an author.
 pub async fn tombstone_user_by_username(
-	db: &DatabaseConnection,
+	db: &impl ConnectionTrait,
 	username: &str,
 ) -> Result<Option<User>, DbErr> {
 	let mut updated = users::Entity::update_many()
@@ -59,6 +59,68 @@ pub async fn tombstone_user_by_username(
 		.await?;
 
 	Ok(updated.pop())
+}
+
+pub async fn insert_auth_session(
+	db: &impl ConnectionTrait,
+	token_hash: String,
+	username: String,
+	expires_at: chrono::DateTime<chrono::FixedOffset>,
+) -> Result<AuthSession, DbErr> {
+	auth_sessions::ActiveModel {
+		token_hash: Set(token_hash),
+		username: Set(username),
+		expires_at: Set(expires_at),
+	}
+	.insert(db)
+	.await
+}
+
+/// A session counts as active only while it is unexpired *and* its user
+/// has not been tombstoned. The join enforces the second half: deleting
+/// an account implicitly revokes every session, on top of the explicit
+/// row deletes issued at logout and account deletion.
+pub async fn find_active_auth_session(
+	db: &impl ConnectionTrait,
+	token_hash: &str,
+) -> Result<Option<AuthSession>, DbErr> {
+	let now: chrono::DateTime<chrono::FixedOffset> = Utc::now().into();
+	auth_sessions::Entity::find_by_id(token_hash)
+		.join(JoinType::InnerJoin, auth_sessions::Relation::Users.def())
+		.filter(auth_sessions::Column::ExpiresAt.gt(now))
+		.filter(users::Column::DeletedAt.is_null())
+		.one(db)
+		.await
+}
+
+pub async fn delete_auth_session(
+	db: &impl ConnectionTrait,
+	token_hash: &str,
+) -> Result<u64, DbErr> {
+	Ok(auth_sessions::Entity::delete_by_id(token_hash)
+		.exec(db)
+		.await?
+		.rows_affected)
+}
+
+pub async fn delete_auth_sessions_by_username(
+	db: &impl ConnectionTrait,
+	username: &str,
+) -> Result<u64, DbErr> {
+	Ok(auth_sessions::Entity::delete_many()
+		.filter(auth_sessions::Column::Username.eq(username))
+		.exec(db)
+		.await?
+		.rows_affected)
+}
+
+pub async fn delete_expired_auth_sessions(db: &impl ConnectionTrait) -> Result<u64, DbErr> {
+	let now: chrono::DateTime<chrono::FixedOffset> = Utc::now().into();
+	Ok(auth_sessions::Entity::delete_many()
+		.filter(auth_sessions::Column::ExpiresAt.lte(now))
+		.exec(db)
+		.await?
+		.rows_affected)
 }
 
 pub async fn find_directory_by_id(

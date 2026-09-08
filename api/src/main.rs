@@ -6,7 +6,7 @@ mod routes;
 mod service;
 mod websocket;
 use anyhow::{Context, Result};
-use auth::auth_middleware;
+use auth::AuthEvents;
 use axum::{
 	Router,
 	body::Body,
@@ -29,11 +29,13 @@ use websocket::WsState;
 #[derive(Clone)]
 pub struct AppState {
 	pub conn: DatabaseConnection,
+	pub auth_events: AuthEvents,
 	pub ws_state: WsState,
 }
 
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
 const SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(8);
+const SESSION_CLEANUP_INTERVAL: Duration = Duration::from_secs(60 * 60);
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -54,7 +56,15 @@ async fn main() -> Result<()> {
 		.await
 		.context("Failed to run database migrations")?;
 
+	tokio::spawn(session_cleanup_loop(conn.clone()));
+
 	let ws_state = WsState::new(1000);
+	let auth_events = AuthEvents::new(1000);
+	let app_state = AppState {
+		conn,
+		auth_events,
+		ws_state,
+	};
 
 	let cors = CorsLayer::new()
 		.allow_origin(Any)
@@ -66,6 +76,8 @@ async fn main() -> Result<()> {
 		.route("/login", post(login));
 
 	let authed = Router::new()
+		.route("/logout", post(logout))
+		.route("/logout-all", post(logout_all))
 		.route("/users", get(get_users))
 		.route("/users/{username}", get(get_user).delete(delete_user))
 		.route(
@@ -77,7 +89,10 @@ async fn main() -> Result<()> {
 		.route("/message/{id}", get(get_message).delete(delete_message))
 		.route("/message", post(create_message))
 		.route("/ws", get(ws_handler))
-		.route_layer(middleware::from_fn(auth_middleware));
+		.route_layer(middleware::from_fn_with_state(
+			app_state.conn.clone(),
+			auth_middleware,
+		));
 
 	let api = public
 		.merge(authed)
@@ -91,7 +106,7 @@ async fn main() -> Result<()> {
 			proxy(uri, app_host, app_port, headers)
 		}))
 		.layer(cors)
-		.with_state(AppState { conn, ws_state });
+		.with_state(app_state);
 
 	let listener = TcpListener::bind(format!("{api_host}:{api_port}")).await?;
 	println!("Server running on http://{api_host}:{api_port}");
@@ -129,6 +144,18 @@ async fn main() -> Result<()> {
 
 async fn api_not_found() -> ServiceError {
 	ServiceError::NotFound("API route not found".into())
+}
+
+async fn session_cleanup_loop(conn: DatabaseConnection) {
+	let mut interval = tokio::time::interval(SESSION_CLEANUP_INTERVAL);
+	interval.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Skip);
+
+	loop {
+		interval.tick().await;
+		if let Err(err) = service::cleanup_expired_auth_sessions(&conn).await {
+			eprintln!("Failed to clean up authentication sessions: {err:?}");
+		}
+	}
 }
 
 async fn shutdown_signal() {
@@ -180,7 +207,10 @@ async fn proxy(
 		Ok(response) => {
 			let status = response.status();
 			let response_headers = response.headers().clone();
-			let body = response.bytes().await.unwrap_or_default();
+			let body = response.bytes().await.map_err(|err| {
+				eprintln!("Proxy error reading upstream body for {proxy_url}: {err:?}");
+				StatusCode::BAD_GATEWAY
+			})?;
 
 			let mut builder = Response::builder().status(status.as_u16());
 
@@ -196,7 +226,7 @@ async fn proxy(
 			})?)
 		}
 		Err(err) => {
-			eprintln!("Proxy error for {}: {}", proxy_url, err);
+			eprintln!("Proxy error for {proxy_url}: {err:?}");
 			Err(StatusCode::BAD_GATEWAY)
 		}
 	}

@@ -12,10 +12,11 @@ import { useAuth } from "./Auth.tsx";
 
 interface WebSocketContextType {
 	onMessage: (handler: (event: MessageEvent) => void) => () => void;
-	sendMessage: (message: WsClientMessage) => void;
+	sendMessage: (message: WsClientMessage) => boolean;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>();
+const AUTH_INVALID_CLOSE_CODE = 4001;
 
 export const useWebSocket = () => {
 	const context = useContext(WebSocketContext);
@@ -26,17 +27,28 @@ export const useWebSocket = () => {
 };
 
 const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
-	const { token } = useAuth();
+	const auth = useAuth();
 	const [socket, setSocket] = createSignal<WebSocket | null>(null);
 	const messageHandlers = new Set<(event: MessageEvent) => void>();
+	let disposed = false;
 
 	const connect = () => {
 		const address = resolveAddress();
 		if (!address) throw new Error("API address not found");
-		const ws = new WebSocket(`ws://${address}/api/ws?token=${token}`);
 
-		ws.onopen = () => setSocket(ws);
-		ws.onclose = () => setSocket(null);
+		const connectionToken = auth.token;
+		const ws = new WebSocket(
+			`ws://${address}/api/ws?token=${connectionToken}`,
+		);
+		// Retain CONNECTING sockets too, so cleanup can abort a pending upgrade.
+		setSocket(ws);
+
+		ws.onclose = (event) => {
+			if (socket() === ws) setSocket(null);
+			if (!disposed && event.code === AUTH_INVALID_CLOSE_CODE) {
+				auth.clearAuthIfCurrent(connectionToken);
+			}
+		};
 		ws.onerror = (error) => console.error("WebSocket error:", error);
 		ws.onmessage = (event) => {
 			messageHandlers.forEach((handler) => {
@@ -47,11 +59,20 @@ const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
 
 	const disconnect = () => {
 		const ws = socket();
-		if (ws) ws.close();
+		if (!ws) return;
+
+		setSocket(null);
+		ws.onclose = null;
+		ws.onerror = null;
+		ws.onmessage = null;
+		ws.close();
 	};
 
 	onMount(() => connect());
-	onCleanup(() => disconnect());
+	onCleanup(() => {
+		disposed = true;
+		disconnect();
+	});
 
 	const onMessage = (handler: (event: MessageEvent) => void) => {
 		messageHandlers.add(handler);
@@ -60,7 +81,11 @@ const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
 
 	const sendMessage = (message: WsClientMessage) => {
 		const ws = socket();
-		if (ws) ws.send(JSON.stringify(message));
+		if (ws && ws.readyState === WebSocket.OPEN) {
+			ws.send(JSON.stringify(message));
+			return true;
+		}
+		return false;
 	};
 
 	return (
