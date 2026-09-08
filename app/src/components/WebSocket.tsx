@@ -12,7 +12,7 @@ import { useAuth } from "./Auth.tsx";
 
 interface WebSocketContextType {
 	onMessage: (handler: (event: MessageEvent) => void) => () => void;
-	sendMessage: (message: WsClientMessage) => void;
+	sendMessage: (message: WsClientMessage) => boolean;
 }
 
 const WebSocketContext = createContext<WebSocketContextType>();
@@ -83,7 +83,9 @@ const WebSocketProvider: Component<{ children: JSX.Element }> = (props) => {
 		const ws = socket();
 		if (ws && ws.readyState === WebSocket.OPEN) {
 			ws.send(JSON.stringify(message));
+			return true;
 		}
+		return false;
 	};
 
 	return (
