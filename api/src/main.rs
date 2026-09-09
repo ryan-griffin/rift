@@ -3,6 +3,7 @@ mod db;
 mod entity;
 mod error;
 mod routes;
+mod service;
 mod websocket;
 use anyhow::{Context, Result};
 use auth::auth_middleware;
@@ -12,15 +13,16 @@ use axum::{
 	http::{HeaderMap, StatusCode, Uri},
 	middleware,
 	response::Response,
-	routing::{get, post},
+	routing::{any, get, post},
 };
 use dotenvy::dotenv;
+use error::ServiceError;
 use migration::{Migrator, MigratorTrait};
 use reqwest::Client;
 use routes::*;
 use sea_orm::{Database, DatabaseConnection};
-use std::{env, sync::LazyLock};
-use tokio::net::TcpListener;
+use std::{env, future::IntoFuture, sync::LazyLock, time::Duration};
+use tokio::{net::TcpListener, sync::oneshot};
 use tower_http::cors::{Any, CorsLayer};
 use websocket::WsState;
 
@@ -31,6 +33,7 @@ pub struct AppState {
 }
 
 static HTTP_CLIENT: LazyLock<Client> = LazyLock::new(Client::new);
+const SHUTDOWN_GRACE_PERIOD: Duration = Duration::from_secs(8);
 
 #[tokio::main]
 async fn main() -> Result<()> {
@@ -59,26 +62,31 @@ async fn main() -> Result<()> {
 		.allow_headers(Any);
 
 	let public = Router::new()
-		.route("/api/signup", post(signup))
-		.route("/api/login", post(login));
+		.route("/signup", post(signup))
+		.route("/login", post(login));
 
 	let authed = Router::new()
-		.route("/api/users", get(get_users))
-		.route("/api/users/{username}", get(get_user).delete(delete_user))
+		.route("/users", get(get_users))
+		.route("/users/{username}", get(get_user).delete(delete_user))
 		.route(
-			"/api/directory/{id}",
+			"/directory/{id}",
 			get(get_directory).delete(delete_directory),
 		)
-		.route("/api/directory", post(create_directory))
-		.route("/api/thread/{id}", get(get_message_thread))
-		.route("/api/message/{id}", get(get_message).delete(delete_message))
-		.route("/api/message", post(create_message))
-		.route("/api/ws", get(ws_handler))
+		.route("/directory", post(create_directory))
+		.route("/thread/{id}", get(get_message_thread))
+		.route("/message/{id}", get(get_message).delete(delete_message))
+		.route("/message", post(create_message))
+		.route("/ws", get(ws_handler))
 		.route_layer(middleware::from_fn(auth_middleware));
 
-	let app = public
+	let api = public
 		.merge(authed)
 		.route_layer(middleware::from_fn(normalize_rejections))
+		.fallback(api_not_found);
+
+	let app = Router::new()
+		.nest("/api", api)
+		.route("/api/", any(api_not_found))
 		.fallback(get(move |uri: Uri, headers: HeaderMap| {
 			proxy(uri, app_host, app_port, headers)
 		}))
@@ -87,9 +95,66 @@ async fn main() -> Result<()> {
 
 	let listener = TcpListener::bind(format!("{api_host}:{api_port}")).await?;
 	println!("Server running on http://{api_host}:{api_port}");
-	axum::serve(listener, app).await?;
+
+	let (shutdown_tx, shutdown_rx) = oneshot::channel();
+	let server = axum::serve(listener, app)
+		.with_graceful_shutdown(async {
+			let _ = shutdown_rx.await;
+		})
+		.into_future();
+	tokio::pin!(server);
+
+	tokio::select! {
+		result = &mut server => {
+			result?;
+			println!("Server stopped");
+		}
+		_ = shutdown_signal() => {
+			let _ = shutdown_tx.send(());
+
+			match tokio::time::timeout(SHUTDOWN_GRACE_PERIOD, &mut server).await {
+				Ok(result) => {
+					result?;
+					println!("Server stopped");
+				}
+				Err(_) => {
+					eprintln!("Shutdown deadline exceeded; forcing server stop");
+				}
+			}
+		}
+	}
 
 	Ok(())
+}
+
+async fn api_not_found() -> ServiceError {
+	ServiceError::NotFound("API route not found".into())
+}
+
+async fn shutdown_signal() {
+	let ctrl_c = async {
+		tokio::signal::ctrl_c()
+			.await
+			.expect("Failed to install Ctrl-C handler");
+	};
+
+	#[cfg(unix)]
+	let terminate = async {
+		tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+			.expect("Failed to install SIGTERM handler")
+			.recv()
+			.await;
+	};
+
+	#[cfg(not(unix))]
+	let terminate = std::future::pending::<()>();
+
+	tokio::select! {
+		_ = ctrl_c => {},
+		_ = terminate => {},
+	}
+
+	println!("\nStopping server...");
 }
 
 async fn proxy(

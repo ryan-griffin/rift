@@ -1,11 +1,15 @@
-use crate::db::delete_user;
-use crate::entity::users::Model as User;
-use crate::error::ApiError;
+use crate::service;
 use crate::websocket::{WsContext, WsError, WsModule, WsPayload};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DeleteUserPayload {
+	username: String,
+}
+
+#[derive(Deserialize)]
+struct UserCreatedPayload {
 	username: String,
 }
 
@@ -26,16 +30,8 @@ impl WsModule for UsersModule {
 		match r#type {
 			"delete_user" => {
 				let payload = payload.get::<DeleteUserPayload>()?;
-
-				// Users may only delete themselves, as on the REST side. The
-				// payload username is only cross-checked; the delete itself
-				// uses the authenticated connection identity so payload
-				// whitespace games can't select a different row.
-				if payload.username.trim() != ctx.username {
-					return Err(ApiError::only_own_account().into());
-				}
-
-				let deleted = delete_user(&ctx.conn, &ctx.username).await?;
+				let deleted =
+					service::delete_user(&ctx.conn, &ctx.username, payload.username).await?;
 
 				ctx.state
 					.broadcast(self.name(), "user_deleted", &deleted)
@@ -53,7 +49,7 @@ impl WsModule for UsersModule {
 
 	fn should_deliver(&self, ctx: &WsContext, r#type: &str, payload: &WsPayload) -> bool {
 		match r#type {
-			"user_created" => match payload.get::<User>() {
+			"user_created" => match payload.get::<UserCreatedPayload>() {
 				Ok(p) => p.username != ctx.username,
 				Err(_) => false,
 			},

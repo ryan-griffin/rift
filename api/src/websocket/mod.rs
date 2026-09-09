@@ -2,7 +2,7 @@ mod directory;
 mod messages;
 mod users;
 
-use crate::error::ApiError;
+use crate::error::ServiceError;
 use anyhow::{Result, anyhow};
 use axum::extract::ws::{CloseFrame, Message as WsMessage, WebSocket, close_code};
 use futures_util::{
@@ -20,6 +20,7 @@ use tokio::sync::{
 	Mutex, broadcast,
 	broadcast::{Receiver, Sender},
 };
+use tungstenite::{Error as TungsteniteError, error::CapacityError};
 
 static MODULE_LIST: LazyLock<Vec<&'static dyn WsModule>> = LazyLock::new(|| {
 	vec![
@@ -47,6 +48,7 @@ impl WsPayload {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 struct WsEnvelope {
 	module: String,
 	#[serde(rename = "type")]
@@ -74,7 +76,7 @@ pub struct WsContext {
 	username: String,
 }
 
-/// Socket-side rendering of the transport-agnostic [`ApiError`]: `Client`
+/// Socket-side rendering of the transport-agnostic [`ServiceError`]: `Client`
 /// messages are safe to echo back to the sender, `Internal` failures are
 /// logged and reported to the client as a generic error.
 pub enum WsError {
@@ -85,22 +87,23 @@ pub enum WsError {
 impl From<DbErr> for WsError {
 	fn from(err: DbErr) -> Self {
 		// The classification policy lives in error.rs, shared with REST.
-		ApiError::from(err).into()
+		ServiceError::from(err).into()
 	}
 }
 
-impl From<ApiError> for WsError {
-	fn from(err: ApiError) -> Self {
+impl From<ServiceError> for WsError {
+	fn from(err: ServiceError) -> Self {
 		match err {
-			ApiError::Internal(err) => Self::Internal(err),
-			ApiError::NotFound(msg)
-			| ApiError::BadRequest(msg)
-			| ApiError::Conflict(msg)
-			| ApiError::Forbidden(msg) => Self::Client(msg),
+			ServiceError::Internal(err) => Self::Internal(err),
+			ServiceError::NotFound(msg)
+			| ServiceError::Gone(msg)
+			| ServiceError::BadRequest(msg)
+			| ServiceError::Conflict(msg)
+			| ServiceError::Forbidden(msg) => Self::Client(msg),
 			// Dead arm today: nothing on the socket path produces
 			// Unauthorized. REST renders this variant body-less, so the
 			// socket echo fabricates the one string it needs.
-			ApiError::Unauthorized => Self::Client("Unauthorized".into()),
+			ServiceError::Unauthorized => Self::Client("Unauthorized".into()),
 		}
 	}
 }
@@ -178,6 +181,9 @@ impl WsState {
 enum ClientEvent {
 	Message(WsEnvelope),
 	UnsupportedData,
+	Invalid(String),
+	MessageTooLarge,
+	PeerClose,
 	Disconnect,
 	Continue,
 }
@@ -185,11 +191,21 @@ enum ClientEvent {
 async fn receive_msg_from_client(receiver: &mut SplitStream<WebSocket>) -> ClientEvent {
 	match receiver.next().await {
 		Some(Ok(message)) => classify_client_message(message),
-		Some(Err(err)) => {
-			eprintln!("WebSocket error: {err}");
-			ClientEvent::Disconnect
-		}
 		None => ClientEvent::Disconnect,
+		Some(Err(err)) => {
+			let err = err.into_inner();
+			if matches!(
+				err.downcast_ref::<TungsteniteError>(),
+				Some(TungsteniteError::Capacity(
+					CapacityError::MessageTooLong { .. }
+				))
+			) {
+				ClientEvent::MessageTooLarge
+			} else {
+				eprintln!("WebSocket error: {err}");
+				ClientEvent::Disconnect
+			}
+		}
 	}
 }
 
@@ -197,12 +213,9 @@ fn classify_client_message(message: WsMessage) -> ClientEvent {
 	match message {
 		WsMessage::Text(text) => match serde_json::from_str(&text) {
 			Ok(env) => ClientEvent::Message(env),
-			Err(err) => {
-				eprintln!("Invalid message from client: {err}");
-				ClientEvent::Continue
-			}
+			Err(err) => ClientEvent::Invalid(format!("Invalid message envelope: {err}")),
 		},
-		WsMessage::Close(_) => ClientEvent::Disconnect,
+		WsMessage::Close(_) => ClientEvent::PeerClose,
 		WsMessage::Binary(_) => ClientEvent::UnsupportedData,
 		WsMessage::Ping(_) | WsMessage::Pong(_) => ClientEvent::Continue,
 	}
@@ -279,6 +292,30 @@ pub async fn handle_socket(
 							break;
 						}
 					}
+					ClientEvent::Invalid(msg) => {
+						if let Err(err) = send_error_to_client(&sender, &msg).await {
+							eprintln!("{err}");
+							break;
+						}
+					},
+					ClientEvent::MessageTooLarge => {
+						let frame = CloseFrame {
+							code: close_code::SIZE,
+							reason: "Message exceeds the 64 KiB limit".into(),
+						};
+						let mut sender = sender.lock().await;
+						if let Err(err) = sender.send(WsMessage::Close(Some(frame))).await {
+							eprintln!("Failed to close oversized WebSocket message: {err}");
+						}
+						break;
+					},
+					ClientEvent::PeerClose => {
+						let mut sender = sender.lock().await;
+						if let Err(err) = sender.close().await {
+							eprintln!("Failed to acknowledge WebSocket close: {err}");
+						}
+						break;
+					},
 					ClientEvent::UnsupportedData => {
 						let mut sender_guard = sender.lock().await;
 						if let Err(err) = sender_guard.send(unsupported_data_close_message()).await {

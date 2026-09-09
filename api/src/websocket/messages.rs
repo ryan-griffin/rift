@@ -1,10 +1,9 @@
-use crate::db::{create_message, delete_message, get_message};
-use crate::entity::messages::Model as Message;
-use crate::error::ApiError;
+use crate::service::{self, CreateMessageInput};
 use crate::websocket::{WsContext, WsError, WsModule, WsPayload};
 use serde::{Deserialize, Serialize};
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct TypingPayload {
 	thread_id: i32,
 }
@@ -20,6 +19,7 @@ struct UserTypingPayload {
 type UserStoppedTypingPayload = UserTypingPayload;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DeleteMessagePayload {
 	id: i32,
 }
@@ -41,6 +41,7 @@ impl WsModule for MessagesModule {
 		match r#type {
 			"typing" => {
 				let TypingPayload { thread_id } = payload.get()?;
+				let thread_id = service::require_thread(&ctx.conn, thread_id).await?.id;
 
 				let payload = UserTypingPayload {
 					username: ctx.username.clone(),
@@ -55,6 +56,7 @@ impl WsModule for MessagesModule {
 
 			"stop_typing" => {
 				let StopTypingPayload { thread_id } = payload.get()?;
+				let thread_id = service::validate_thread_id(thread_id)?;
 
 				let payload = UserStoppedTypingPayload {
 					username: ctx.username.clone(),
@@ -68,9 +70,9 @@ impl WsModule for MessagesModule {
 			}
 
 			"create_message" => {
-				let msg = payload.get::<Message>()?;
-
-				let created = create_message(&ctx.conn, ctx.username.clone(), msg).await?;
+				let input = payload.get::<CreateMessageInput>()?;
+				let created =
+					service::create_message(&ctx.conn, ctx.username.clone(), input).await?;
 
 				ctx.state
 					.broadcast(self.name(), "message_created", &created)
@@ -80,15 +82,7 @@ impl WsModule for MessagesModule {
 
 			"delete_message" => {
 				let payload = payload.get::<DeleteMessagePayload>()?;
-
-				// Only the author may delete a message; the REST endpoint
-				// answers 403 for everyone else.
-				let message = get_message(&ctx.conn, payload.id).await?;
-				if message.author_username != ctx.username {
-					return Err(ApiError::only_own_messages().into());
-				}
-
-				let deleted = delete_message(&ctx.conn, payload.id).await?;
+				let deleted = service::delete_message(&ctx.conn, &ctx.username, payload.id).await?;
 
 				ctx.state
 					.broadcast(self.name(), "message_deleted", &deleted)

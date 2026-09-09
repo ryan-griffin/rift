@@ -1,9 +1,9 @@
-use crate::db::{create_directory, delete_directory};
-use crate::entity::directory::Model as Directory;
+use crate::service::{self, CreateDirectoryInput};
 use crate::websocket::{WsContext, WsError, WsModule, WsPayload};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
 struct DeleteDirectoryPayload {
 	id: i32,
 }
@@ -24,9 +24,8 @@ impl WsModule for DirectoryModule {
 	) -> Result<(), WsError> {
 		match r#type {
 			"create_directory" => {
-				let directory = payload.get::<Directory>()?;
-
-				let created = create_directory(&ctx.conn, directory).await?;
+				let input = payload.get::<CreateDirectoryInput>()?;
+				let created = service::create_directory(&ctx.conn, input).await?;
 
 				ctx.state
 					.broadcast(self.name(), "directory_created", &created)
@@ -36,8 +35,7 @@ impl WsModule for DirectoryModule {
 
 			"delete_directory" => {
 				let payload = payload.get::<DeleteDirectoryPayload>()?;
-
-				let deleted = delete_directory(&ctx.conn, payload.id).await?;
+				let deleted = service::delete_directory(&ctx.conn, payload.id).await?;
 
 				ctx.state
 					.broadcast(self.name(), "directory_deleted", &deleted)
