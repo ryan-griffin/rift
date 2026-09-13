@@ -39,6 +39,26 @@ const CLOSE_HANDSHAKE_TIMEOUT: Duration = Duration::from_secs(1);
 const SEND_TIMEOUT: Duration = Duration::from_secs(5);
 const AUTH_INVALID_CLOSE_CODE: u16 = 4001;
 
+struct CloseReason {
+	code: u16,
+	reason: &'static str,
+}
+
+impl CloseReason {
+	const UNAUTHORIZED: Self = Self {
+		code: AUTH_INVALID_CLOSE_CODE,
+		reason: "Unauthorized",
+	};
+	const INTERNAL_ERROR: Self = Self {
+		code: close_code::ERROR,
+		reason: "Internal server error",
+	};
+	const MESSAGE_TOO_LARGE: Self = Self {
+		code: close_code::SIZE,
+		reason: "Message exceeds the 64 KiB limit",
+	};
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct WsPayload(Value);
 
@@ -264,12 +284,11 @@ async fn send_error_to_client(sender: &mut SplitSink<WebSocket, WsMessage>, msg:
 async fn close_socket(
 	sender: &mut SplitSink<WebSocket, WsMessage>,
 	receiver: &mut SplitStream<WebSocket>,
-	code: u16,
-	reason: &'static str,
+	close: CloseReason,
 ) {
 	let frame = CloseFrame {
-		code,
-		reason: reason.into(),
+		code: close.code,
+		reason: close.reason.into(),
 	};
 	match tokio::time::timeout(
 		CLOSE_HANDSHAKE_TIMEOUT,
@@ -313,15 +332,15 @@ pub async fn handle_socket(
 
 	let close = match service::is_session_active(&ctx.conn, &ctx.auth).await {
 		Ok(true) => run_socket(&mut sender, &mut receiver, &ctx, &mut rx, &mut auth_rx).await,
-		Ok(false) => Some((AUTH_INVALID_CLOSE_CODE, "Authentication is no longer valid")),
+		Ok(false) => Some(CloseReason::UNAUTHORIZED),
 		Err(err) => {
 			eprintln!("Failed to validate WebSocket authentication: {err:?}");
-			Some((close_code::ERROR, "Unable to validate authentication"))
+			Some(CloseReason::INTERNAL_ERROR)
 		}
 	};
 
-	if let Some((code, reason)) = close {
-		close_socket(&mut sender, &mut receiver, code, reason).await;
+	if let Some(close) = close {
+		close_socket(&mut sender, &mut receiver, close).await;
 	}
 }
 
@@ -329,7 +348,7 @@ async fn handle_client_event(
 	sender: &mut SplitSink<WebSocket, WsMessage>,
 	ctx: &WsContext,
 	event: ClientEvent,
-) -> ControlFlow<Option<(u16, &'static str)>> {
+) -> ControlFlow<Option<CloseReason>> {
 	let error = match event {
 		ClientEvent::Message(env) => match ctx.state.modules.get(env.module.as_str()) {
 			Some(module) => module.handle(ctx, &env.r#type, &env.payload).await.err(),
@@ -337,10 +356,7 @@ async fn handle_client_event(
 		},
 		ClientEvent::Invalid(msg) => Some(WsError::Client(msg)),
 		ClientEvent::MessageTooLarge => {
-			return ControlFlow::Break(Some((
-				close_code::SIZE,
-				"Message exceeds the 64 KiB limit",
-			)));
+			return ControlFlow::Break(Some(CloseReason::MESSAGE_TOO_LARGE));
 		}
 		ClientEvent::PeerClose => {
 			let _ = tokio::time::timeout(CLOSE_HANDSHAKE_TIMEOUT, sender.close()).await;
@@ -372,7 +388,7 @@ async fn run_socket(
 	ctx: &WsContext,
 	rx: &mut Receiver<WsEnvelope>,
 	auth_rx: &mut Receiver<AuthInvalidation>,
-) -> Option<(u16, &'static str)> {
+) -> Option<CloseReason> {
 	let until_expiration = (ctx.auth.expires_at.with_timezone(&Utc) - Utc::now())
 		.to_std()
 		.unwrap_or_default();
@@ -387,7 +403,7 @@ async fn run_socket(
 				match auth_event {
 					Ok(event) if !event.applies_to(&ctx.auth) => continue,
 					Ok(AuthInvalidation::Session { .. }) => {
-						return Some((AUTH_INVALID_CLOSE_CODE, "Authentication revoked"));
+						return Some(CloseReason::UNAUTHORIZED);
 					}
 					Ok(AuthInvalidation::User { .. })
 					| Err(broadcast::error::RecvError::Lagged(_)) => {
@@ -396,22 +412,23 @@ async fn run_socket(
 						match service::is_session_active(&ctx.conn, &ctx.auth).await {
 							Ok(true) => continue,
 							Ok(false) => {
-								return Some((AUTH_INVALID_CLOSE_CODE, "Authentication is no longer valid"));
+								return Some(CloseReason::UNAUTHORIZED);
 							}
 							Err(err) => {
 								eprintln!("Failed to revalidate WebSocket authentication: {err:?}");
-								return Some((close_code::ERROR, "Unable to validate authentication"));
+								return Some(CloseReason::INTERNAL_ERROR);
 							}
 						}
 					}
 					Err(broadcast::error::RecvError::Closed) => {
-						return Some((close_code::ERROR, "Authentication service unavailable"));
+						eprintln!("WebSocket authentication event channel closed unexpectedly");
+						return Some(CloseReason::INTERNAL_ERROR);
 					}
 				}
 			}
 
 			_ = &mut expiration => {
-				return Some((AUTH_INVALID_CLOSE_CODE, "Authentication expired"));
+				return Some(CloseReason::UNAUTHORIZED);
 			}
 
 			event = next_io_event(receiver, rx) => match event {

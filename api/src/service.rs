@@ -7,7 +7,7 @@ use crate::entity::{
 	directory::Model as Directory, messages::Model as Message, users::Model as User,
 };
 use crate::error::ServiceError;
-use anyhow::Error;
+use anyhow::Context;
 use sea_orm::{
 	AccessMode, ConnectionTrait, DatabaseConnection, DatabaseTransaction, IsolationLevel,
 	TransactionTrait,
@@ -139,12 +139,8 @@ async fn prepare_signup(input: SignupInput) -> Result<PreparedSignup, ServiceErr
 	} = input;
 	let password_hash = tokio::task::spawn_blocking(move || hash_password(&password))
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(Error::from(err).context("Password hashing task failed"))
-		})?
-		.map_err(|err| {
-			ServiceError::Internal(Error::from(err).context("Failed to hash password"))
-		})?;
+		.context("Password hashing task failed")?
+		.context("Failed to hash password")?;
 
 	Ok(PreparedSignup {
 		username,
@@ -159,11 +155,7 @@ async fn authenticate_user(
 ) -> Result<Option<User>, ServiceError> {
 	let Some(user) = db::find_user_by_username(db, &credentials.username)
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(
-				Error::from(err).context("Failed to find user for authentication"),
-			)
-		})?
+		.context("Failed to find user for authentication")?
 	else {
 		return Ok(None);
 	};
@@ -177,12 +169,8 @@ async fn authenticate_user(
 	let password_hash = user.password.clone();
 	let matches = tokio::task::spawn_blocking(move || verify_password(&password, &password_hash))
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(Error::from(err).context("Password verification task failed"))
-		})?
-		.map_err(|err| {
-			ServiceError::Internal(Error::from(err).context("Failed to verify password"))
-		})?;
+		.context("Password verification task failed")?
+		.context("Failed to verify password")?;
 
 	Ok(matches.then_some(user))
 }
@@ -202,11 +190,7 @@ pub async fn authenticate_token(
 
 	Ok(db::find_active_auth_session(db, &hash_token(token))
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(
-				Error::from(err).context("Failed to look up authentication session"),
-			)
-		})?
+		.context("Failed to look up authentication session")?
 		.map(|session| AuthSession {
 			username: session.username,
 			token_hash: session.token_hash,
@@ -220,36 +204,26 @@ pub async fn is_session_active(
 ) -> Result<bool, ServiceError> {
 	Ok(db::find_active_auth_session(db, &session.token_hash)
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(
-				Error::from(err).context("Failed to revalidate authentication session"),
-			)
-		})?
+		.context("Failed to revalidate authentication session")?
 		.is_some_and(|active| active.username == session.username))
 }
 
 /// Create a session and return its raw token. Only the token hash is persisted.
-async fn issue_token(db: &impl ConnectionTrait, username: &str) -> Result<String, ServiceError> {
-	let token = generate_token().map_err(ServiceError::Internal)?;
-	let expires_at = session_expires_at().map_err(ServiceError::Internal)?;
+async fn create_session(db: &impl ConnectionTrait, username: &str) -> Result<String, ServiceError> {
+	let token = generate_token()?;
+	let expires_at = session_expires_at()?;
 
 	db::insert_auth_session(db, hash_token(&token), username.to_owned(), expires_at)
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(
-				Error::from(err).context("Failed to store authentication session"),
-			)
-		})?;
+		.context("Failed to store authentication session")?;
 
 	Ok(token)
 }
 
 pub async fn cleanup_expired_auth_sessions(db: &DatabaseConnection) -> Result<u64, ServiceError> {
-	db::delete_expired_auth_sessions(db).await.map_err(|err| {
-		ServiceError::Internal(
-			Error::from(err).context("Failed to delete expired authentication sessions"),
-		)
-	})
+	Ok(db::delete_expired_auth_sessions(db)
+		.await
+		.context("Failed to delete expired authentication sessions")?)
 }
 
 /// Revoke a committed session and notify all subscribed transports.
@@ -260,11 +234,7 @@ pub async fn logout(
 ) -> Result<(), ServiceError> {
 	db::delete_auth_session(db, &session.token_hash)
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(
-				Error::from(err).context("Failed to revoke authentication session"),
-			)
-		})?;
+		.context("Failed to revoke authentication session")?;
 	auth_events.invalidate_session(session);
 	Ok(())
 }
@@ -286,11 +256,7 @@ async fn delete_user_sessions(
 ) -> Result<(), ServiceError> {
 	db::delete_auth_sessions_by_username(db, username)
 		.await
-		.map_err(|err| {
-			ServiceError::Internal(
-				Error::from(err).context("Failed to revoke user authentication sessions"),
-			)
-		})?;
+		.context("Failed to revoke user authentication sessions")?;
 	Ok(())
 }
 
@@ -323,7 +289,7 @@ pub async fn signup(
 	let result = async {
 		let created_user =
 			db::insert_user(&txn, input.username, input.name, input.password_hash).await?;
-		let token = issue_token(&txn, &created_user.username).await?;
+		let token = create_session(&txn, &created_user.username).await?;
 		Ok(AuthResponse {
 			user: created_user,
 			token,
@@ -347,7 +313,7 @@ pub async fn login(
 	let user = authenticate_user(db, &credentials)
 		.await?
 		.ok_or(ServiceError::Unauthorized)?;
-	let token = issue_token(db, &user.username).await?;
+	let token = create_session(db, &user.username).await?;
 
 	Ok(AuthResponse { user, token })
 }

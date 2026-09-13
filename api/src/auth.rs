@@ -20,22 +20,14 @@ pub struct AuthSession {
 /// Transport-independent notifications for long-lived authenticated connections.
 #[derive(Clone, Debug)]
 pub enum AuthInvalidation {
-	Session {
-		username: String,
-		token_hash: String,
-	},
-	User {
-		username: String,
-	},
+	Session { token_hash: String },
+	User { username: String },
 }
 
 impl AuthInvalidation {
 	pub fn applies_to(&self, session: &AuthSession) -> bool {
 		match self {
-			Self::Session {
-				username,
-				token_hash,
-			} => username == &session.username && token_hash == &session.token_hash,
+			Self::Session { token_hash } => token_hash == &session.token_hash,
 			Self::User { username } => username == &session.username,
 		}
 	}
@@ -60,7 +52,6 @@ impl AuthEvents {
 
 	pub(crate) fn invalidate_session(&self, session: &AuthSession) {
 		let _ = self.tx.send(AuthInvalidation::Session {
-			username: session.username.clone(),
 			token_hash: session.token_hash.clone(),
 		});
 	}
