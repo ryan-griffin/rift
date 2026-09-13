@@ -28,27 +28,24 @@ const WS_INPUT_LIMIT: usize = 64 * 1024;
 
 /// REST rendering of the transport-agnostic `ServiceError`: client faults map
 /// to 4xx statuses with their message as a JSON body; internal failures
-/// are logged and stay body-less so internals never leak.
+/// are logged and receive a generic JSON message so internals never leak.
 impl IntoResponse for ServiceError {
 	fn into_response(self) -> Response {
 		let (status, message) = match &self {
-			Self::NotFound(msg) => (StatusCode::NOT_FOUND, Some(msg.clone())),
-			Self::Gone(msg) => (StatusCode::GONE, Some(msg.clone())),
-			Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, Some(msg.clone())),
-			Self::Conflict(msg) => (StatusCode::CONFLICT, Some(msg.clone())),
-			Self::Forbidden(msg) => (StatusCode::FORBIDDEN, Some(msg.clone())),
-			Self::Unauthorized => (StatusCode::UNAUTHORIZED, None),
+			Self::NotFound(msg) => (StatusCode::NOT_FOUND, msg.as_str()),
+			Self::Gone(msg) => (StatusCode::GONE, msg.as_str()),
+			Self::BadRequest(msg) => (StatusCode::BAD_REQUEST, msg.as_str()),
+			Self::Conflict(msg) => (StatusCode::CONFLICT, msg.as_str()),
+			Self::Forbidden(msg) => (StatusCode::FORBIDDEN, msg.as_str()),
+			Self::Unauthorized => (StatusCode::UNAUTHORIZED, "Unauthorized"),
 			Self::Internal(err) => {
 				// Debug prints anyhow's full context chain; Display drops it.
 				eprintln!("{err:?}");
-				(StatusCode::INTERNAL_SERVER_ERROR, None)
+				(StatusCode::INTERNAL_SERVER_ERROR, "Internal server error")
 			}
 		};
 
-		match message {
-			Some(msg) => (status, Json(json!({ "error": msg }))).into_response(),
-			None => status.into_response(),
-		}
+		(status, Json(json!({ "error": message }))).into_response()
 	}
 }
 
